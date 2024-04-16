@@ -3,15 +3,20 @@ from PIL import Image
 import PyPDF2
 import pdf2image
 import re
+import os
+import dotenv
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Users\martin.brzezinski\AppData\Local\Programs\Tesseract-OCR\tesseract'
+dotenv.load_dotenv()
+
+pytesseract.pytesseract.tesseract_cmd = os.environ.get('TESSERACT_CMD')
 
 custom_config = r'--oem 3 --psm 6 -l pol'
 
 # print(pytesseract)
 file_path = 'a.pdf'
+poppler_path=os.environ.get('POPPLER_PATH')
 
-images = pdf2image.convert_from_path(file_path, poppler_path=r'\\fs1spp\home\kt\martin.brzezinski\Desktop\Pyton\pdf2xls\poppler-24.02.0\Library\bin')
+images = pdf2image.convert_from_path(file_path, poppler_path=poppler_path)
 
 def perform_ocr(images):
     extracted_text = []
@@ -21,16 +26,16 @@ def perform_ocr(images):
     return '\n'.join(extracted_text)
 
 ocr_text = perform_ocr(images)
-print(ocr_text)
+# print(ocr_text)
 
-name_pattern = r'na rzecz [A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\b'
+name_pattern = r'(?<=na rzecz )[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\b'
 name = re.findall(name_pattern, ocr_text)
-name = name[0].strip('na rzecz ')
+name = name[0]
 
-vin_pattern = r'\b[A-Z0-9]{17}\b'
+vin_pattern = r'(?<=VIN: )[A-Z0-9]{4,17}\b'
 vin = re.findall(vin_pattern, ocr_text)
 
-tr_pattern = r'nr rej. ([A-Z0-9]+\s[A-Z0-9]+)\b'
+tr_pattern = r'(?<=nr rej. )([A-Z0-9]+\s[A-Z0-9]+)\b'
 tr = re.findall(tr_pattern, ocr_text)
 
 print(name)
