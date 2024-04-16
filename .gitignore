@@ -1,0 +1,6 @@
+venv/
+poppler-24.02.0/
+
+*.pdf
+*.xlsx
+
