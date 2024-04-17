@@ -37,10 +37,10 @@ def find_patterns(ocr_text):
     output = {}
     for text in ocr_text:
         try:
-            print(text)
-            name_pattern = r'(?<=na rzecz )([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*)?)'
-            name = re.findall(name_pattern, text)
-            print(name)
+            # print(text)
+            name_pattern = r'(?<=na rzecz )(([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*)+)'
+            name = re.search(name_pattern, text)
+            # print(name)
             name = name[0].replace('\n', ' ')
 
             vin_pattern = r'(?<=VIN: )[A-Z0-9]{4,17}\b'
@@ -48,14 +48,27 @@ def find_patterns(ocr_text):
 
             tr_pattern = r'(?<=nr rej\.)\s?([A-Z0-9]+\s[A-Z0-9]+)\b'
             tr = re.findall(tr_pattern, text)
-
+            tr = tr[0].replace('\n', ' ')
+            
             kt_pattern = r'(?<=KT.5410.[0-9].)([0-9]+)'
             kt = re.findall(kt_pattern, text)
             kt = kt[0]
-            print(kt, name, vin, tr)
-            output[kt] = {'name': name, 'vin': vin[0], 'tr': tr[0].replace('\n', ' ')}
+            
+            art_pattern = r'(?<=w związku z art\. ).*(?= ustawy)'
+            art = re.search(art_pattern, text)
+            
+            address_pattern = r'(?<=na rzecz )([\w\s©\[\],]+)(?=w związku)'
+            address = re.search(address_pattern, text)
+            
+            date_pattern = r'(?<=Poznań, dnia ).+(?=r)'
+            date = re.search(date_pattern, text)
+            
+            print(kt, name, vin[0], tr, art[0], address[0], date[0])
+            output[kt] = {'name': name, 'vin': vin[0], 'tr': tr}
         except IndexError as e:
             print('error', e)
+        except TypeError as e:
+            print('type error')
     return output
 
 
