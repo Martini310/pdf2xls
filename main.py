@@ -6,6 +6,11 @@ import re
 import os
 import dotenv
 from openpyxl import Workbook
+import docx
+from docx import Document
+from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+
 
 dotenv.load_dotenv()
 
@@ -30,7 +35,7 @@ def perform_ocr(images):
         ocr_text.append('\n'.join(extracted_text))
     return ocr_text
 
-ocr_text = perform_ocr(images)
+# ocr_text = perform_ocr(images)
 # print(ocr_text)
 
 def find_patterns(ocr_text):
@@ -59,8 +64,8 @@ def find_patterns(ocr_text):
     return output
 
 
-sentences = find_patterns(ocr_text)
-print(sentences)
+# sentences = find_patterns(ocr_text)
+# print(sentences)
 
 
 def write_to_excel_from_ocr(sentences, excel_file_path):
@@ -77,5 +82,25 @@ def write_to_excel_from_ocr(sentences, excel_file_path):
     workbook.save(excel_file_path)
 
 # Usage:
-write_to_excel_from_ocr(sentences, 'output_ocr.xlsx')
+# write_to_excel_from_ocr(sentences, 'output_ocr.xlsx')
 
+doc = Document()
+
+font = doc.styles['Normal'].font
+
+font.name = 'Calibri'
+font.size = Pt(10)
+
+paragraph = doc.add_paragraph('Starostwo Powiatowe w Poznaniu\nul. Jackowskiego 18\n60-509 Poznań')
+paragraph_format = paragraph.paragraph_format
+
+paragraph_format.line_spacing = 0.75
+
+
+paragraph = doc.add_paragraph('Adam Nowak\nul. Długa 1\n12-345 Zbąszyń')
+paragraph_format = paragraph.paragraph_format
+
+paragraph_format.line_spacing = 0.75
+paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+doc.save('test.docx')
