@@ -35,29 +35,29 @@ def perform_ocr(images):
         ocr_text.append('\n'.join(extracted_text))
     return ocr_text
 
-# ocr_text = perform_ocr(images)
+ocr_text = perform_ocr(images)
 # print(ocr_text)
 
 def find_patterns(ocr_text):
     output = {}
     for text in ocr_text:
         try:
+            kt_pattern = r'(?<=KT.5410.[0-9].)([0-9]+)'
+            kt = re.findall(kt_pattern, text)
+            kt = kt[0]
+            
             # print(text)
             name_pattern = r'(?<=na rzecz )(([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*)+)'
             name = re.search(name_pattern, text)
             # print(name)
             name = name[0].replace('\n', ' ')
 
-            vin_pattern = r'(?<=VIN: )[A-Z0-9]{4,17}\b'
+            vin_pattern = r'(?<=VIN:)[\s —-]*([A-Z0-9]*)'
             vin = re.findall(vin_pattern, text)
 
             tr_pattern = r'(?<=nr rej\.)\s?([A-Z0-9]+\s[A-Z0-9]+)\b'
             tr = re.findall(tr_pattern, text)
             tr = tr[0].replace('\n', ' ')
-            
-            kt_pattern = r'(?<=KT.5410.[0-9].)([0-9]+)'
-            kt = re.findall(kt_pattern, text)
-            kt = kt[0]
             
             art_pattern = r'(?<=w związku z art\. ).*(?= ustawy)'
             art = re.search(art_pattern, text)
@@ -68,16 +68,24 @@ def find_patterns(ocr_text):
             date_pattern = r'(?<=Poznań, dnia ).+(?=r)'
             date = re.search(date_pattern, text)
             
+            # brand_pattern = r'(?<=marki).*(?=o nr rej)'
+            # brand = re.findall(brand_pattern, text)
+            # brand = brand[0]
+            
             print(kt, name, vin[0], tr, art[0], address[0], date[0])
             output[kt] = {'name': name, 'vin': vin[0], 'tr': tr}
         except IndexError as e:
-            print('error', e)
+            # print(text)
+            print(kt, 'error', e)
+            print(kt, name, vin, tr, art, address, date)
+            print('---' * 50)
         except TypeError as e:
-            print('type error')
+            print(kt, 'type error')
+            print(text)
     return output
 
 
-# sentences = find_patterns(ocr_text)
+sentences = find_patterns(ocr_text)
 # print(sentences)
 
 
@@ -95,7 +103,7 @@ def write_to_excel_from_ocr(sentences, excel_file_path):
     workbook.save(excel_file_path)
 
 # Usage:
-# write_to_excel_from_ocr(sentences, 'output_ocr.xlsx')
+write_to_excel_from_ocr(sentences, 'output_ocr.xlsx')
 
 doc = Document()
 
