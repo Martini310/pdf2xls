@@ -18,9 +18,10 @@ pytesseract.pytesseract.tesseract_cmd = os.environ.get('TESSERACT_CMD')
 
 custom_config = r'--oem 3 --psm 6 -l pol'
 poppler_path=os.environ.get('POPPLER_PATH')
-
+print(os.listdir('./skany'))
 file_path = 'a.pdf'
-files = [f for f in os.listdir('.') if os.path.isfile(f) and f.endswith('.pdf')]
+files = [os.path.join("./skany", f) for f in os.listdir('./skany') if os.path.isfile(os.path.join("./skany", f)) and f.endswith('.pdf')]
+# files = [print(os.path.isfile(os.path.join("./skany", f))) for f in os.listdir('./skany')]
 print(files)
 # images = pdf2image.convert_from_path(file_path, poppler_path=poppler_path)
 images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in files]
@@ -55,29 +56,41 @@ def find_patterns(ocr_text):
             vin_pattern = r'(?<=VIN:)[\s —-]*([A-Z0-9]*)'
             vin = re.findall(vin_pattern, text)
 
-            tr_pattern = r'(?<=nr rej\.)\s?([A-Z0-9]+\s[A-Z0-9]+)\b'
-            tr = re.findall(tr_pattern, text)
-            tr = tr[0].replace('\n', ' ')
-            
-            art_pattern = r'(?<=w związku z art\. ).*(?= ustawy)'
+            art_pattern = r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)'
             art = re.search(art_pattern, text)
             
-            address_pattern = r'(?<=na rzecz )([\w\s©\[\],]+)(?=w związku)'
-            address = re.search(address_pattern, text)
+            if '73aa ust. 1 pkt 3' in art[0]:
+                tr = ''
+            else:
+                tr_pattern = r'(?<=nr rej\.)\s?([A-Z0-9]+\s*[A-Z0-9]+)\b'
+                tr = re.findall(tr_pattern, text)
+                tr = tr[0].replace('\n', ' ')
+            
+            czynnosc = ''
+            if '73aa ust. 1 pkt 3' in art[0]:
+                czynnosc = 'SPROWADZONY'
+            elif '73aa ust. 1 pkt 1' in art[0]:
+                czynnosc = 'NABYCIE'
+            elif '78 ust. 2 pkt 1' in art[0]:
+                czynnosc = 'ZBYCIE'
+
+            # address_pattern = r'(?<=na rzecz )([\w\s©\[\],]+)(?=w związku)'
+            # address = re.search(address_pattern, text)
             
             date_pattern = r'(?<=Poznań, dnia ).+(?=r)'
             date = re.search(date_pattern, text)
+            date = date[0].replace('—', '.')
             
             # brand_pattern = r'(?<=marki).*(?=o nr rej)'
             # brand = re.findall(brand_pattern, text)
             # brand = brand[0]
             
-            print(kt, name, vin[0], tr, art[0], address[0], date[0])
-            output[kt] = {'name': name, 'vin': vin[0], 'tr': tr}
+            # print(kt, name, vin[0], tr, art[0], address[0], date[0])
+            output[kt] = {'name': name, 'vin': vin[0], 'tr': tr, 'date': date, 'art': art[0], 'czynnosc': czynnosc}
         except IndexError as e:
             # print(text)
             print(kt, 'error', e)
-            print(kt, name, vin, tr, art, address, date)
+            print(kt, name, vin, tr, art, date)
             print('---' * 50)
         except TypeError as e:
             print(kt, 'type error')
@@ -97,31 +110,41 @@ def write_to_excel_from_ocr(sentences, excel_file_path):
     for idx, key in enumerate(sentences, start=1):
         # sheet[f'A{idx}'] = sentence
         sheet[f'A{idx}'] = key
-        sheet[f'B{idx}'] = sentences[key]['name']
+        sheet[f'B{idx}'] = sentences[key]['tr']
         sheet[f'C{idx}'] = sentences[key]['vin']
-        sheet[f'D{idx}'] = sentences[key]['tr']
+        sheet[f'D{idx}'] = sentences[key]['name']
+        sheet[f'E{idx}'] = ''
+        sheet[f'F{idx}'] = ''
+        sheet[f'G{idx}'] = sentences[key]['date']
+        sheet[f'H{idx}'] = ''
+        sheet[f'I{idx}'] = ''
+        sheet[f'J{idx}'] = ''
+        sheet[f'K{idx}'] = sentences[key]['czynnosc']
+        sheet[f'L{idx}'] = sentences[key]['art']
     workbook.save(excel_file_path)
 
 # Usage:
 write_to_excel_from_ocr(sentences, 'output_ocr.xlsx')
 
-doc = Document()
-
-font = doc.styles['Normal'].font
-
-font.name = 'Calibri'
-font.size = Pt(10)
-
-paragraph = doc.add_paragraph('Starostwo Powiatowe w Poznaniu\nul. Jackowskiego 18\n60-509 Poznań')
-paragraph_format = paragraph.paragraph_format
-
-paragraph_format.line_spacing = 0.75
 
 
-paragraph = doc.add_paragraph('Adam Nowak\nul. Długa 1\n12-345 Zbąszyń')
-paragraph_format = paragraph.paragraph_format
+# doc = Document()
 
-paragraph_format.line_spacing = 0.75
-paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+# font = doc.styles['Normal'].font
 
-doc.save('test.docx')
+# font.name = 'Calibri'
+# font.size = Pt(10)
+
+# paragraph = doc.add_paragraph('Starostwo Powiatowe w Poznaniu\nul. Jackowskiego 18\n60-509 Poznań')
+# paragraph_format = paragraph.paragraph_format
+
+# paragraph_format.line_spacing = 0.75
+
+
+# paragraph = doc.add_paragraph('Adam Nowak\nul. Długa 1\n12-345 Zbąszyń')
+# paragraph_format = paragraph.paragraph_format
+
+# paragraph_format.line_spacing = 0.75
+# paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+# doc.save('test.docx')
