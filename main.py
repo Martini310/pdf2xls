@@ -15,7 +15,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 dotenv.load_dotenv()
 
 pytesseract.pytesseract.tesseract_cmd = os.environ.get('TESSERACT_CMD')
-
+print(pytesseract.get_tesseract_version())
 custom_config = r'--oem 3 --psm 6 -l pol'
 poppler_path=os.environ.get('POPPLER_PATH')
 
