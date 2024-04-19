@@ -15,16 +15,15 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 dotenv.load_dotenv()
 
 pytesseract.pytesseract.tesseract_cmd = os.environ.get('TESSERACT_CMD')
-print(pytesseract.get_tesseract_version())
+
 custom_config = r'--oem 3 --psm 6 -l pol'
 poppler_path=os.environ.get('POPPLER_PATH')
-print(os.listdir('./skany'))
-file_path = 'a.pdf'
+
 files = [os.path.join("./skany", f) for f in os.listdir('./skany') if os.path.isfile(os.path.join("./skany", f)) and f.endswith('.pdf')]
-# files = [print(os.path.isfile(os.path.join("./skany", f))) for f in os.listdir('./skany')]
-print(files)
-# images = pdf2image.convert_from_path(file_path, poppler_path=poppler_path)
-images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in files]
+# print(files)
+images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in list(reversed(files))[50:65]]
+
+# print(images)
 
 def perform_ocr(images):
     ocr_text = []
@@ -45,52 +44,57 @@ def find_patterns(ocr_text):
         try:
             kt_pattern = r'(?<=KT.5410.[0-9].)([0-9]+)'
             kt = re.findall(kt_pattern, text)
-            kt = kt[0]
+            if not kt:
+                kt = ''
+            else:
+                kt = kt[0]
             
             # print(text)
             name_pattern = r'(?<=na rzecz )(([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*)+)'
             name = re.search(name_pattern, text)
             # print(name)
-            name = name[0].replace('\n', ' ')
+            name = name[0].replace('\n', ' ').strip()
 
             vin_pattern = r'(?<=VIN:)[\s —-]*([A-Z0-9]*)'
             vin = re.findall(vin_pattern, text)
 
             art_pattern = r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)'
             art = re.search(art_pattern, text)
-            
-            if '73aa ust. 1 pkt 3' in art[0]:
+            art = art[0].replace('\n', ' ')
+
+            if '73aa ust. 1 pkt 3' in art:
                 tr = ''
             else:
-                tr_pattern = r'(?<=nr rej\.)\s?([A-Z0-9]+\s*[A-Z0-9]+)\b'
+                tr_pattern = r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b'
                 tr = re.findall(tr_pattern, text)
+                print(tr)
                 tr = tr[0].replace('\n', ' ')
-            
+            # tr=''
             czynnosc = ''
-            if '73aa ust. 1 pkt 3' in art[0]:
+            if '73aa ust. 1 pkt 3' in art:
                 czynnosc = 'SPROWADZONY'
-            elif '73aa ust. 1 pkt 1' in art[0]:
+            elif '73aa ust. 1 pkt 1' in art:
                 czynnosc = 'NABYCIE'
-            elif '78 ust. 2 pkt 1' in art[0]:
+            elif '78 ust. 2 pkt 1' in art:
                 czynnosc = 'ZBYCIE'
 
-            # address_pattern = r'(?<=na rzecz )([\w\s©\[\],]+)(?=w związku)'
-            # address = re.search(address_pattern, text)
+            address_pattern = r'(?<=na rzecz )([\w\s©\[\],]+)(?=w związku)'
+            address = re.search(address_pattern, text)
             
             date_pattern = r'(?<=Poznań, dnia ).+(?=r)'
             date = re.search(date_pattern, text)
             date = date[0].replace('—', '.')
             
-            # brand_pattern = r'(?<=marki).*(?=o nr rej)'
-            # brand = re.findall(brand_pattern, text)
-            # brand = brand[0]
+            brand_pattern = r'(?<=marki)[\w\s]+(?=o)'
+            brand = re.findall(brand_pattern, text)
+            brand = brand[0].strip()
             
             # print(kt, name, vin[0], tr, art[0], address[0], date[0])
-            output[kt] = {'name': name, 'vin': vin[0], 'tr': tr, 'date': date, 'art': art[0], 'czynnosc': czynnosc}
+            output[kt] = {'name': name, 'vin': vin[0], 'tr': tr, 'date': date, 'art': art, 'czynnosc': czynnosc}
         except IndexError as e:
-            # print(text)
+            print(text)
             print(kt, 'error', e)
-            print(kt, name, vin, tr, art, date)
+            print(kt, name, vin, tr, art, date, brand, address[0])
             print('---' * 50)
         except TypeError as e:
             print(kt, 'type error')
@@ -108,7 +112,6 @@ def write_to_excel_from_ocr(sentences, excel_file_path):
     sheet.title = 'Extracted Sentences (OCR)'
 
     for idx, key in enumerate(sentences, start=1):
-        # sheet[f'A{idx}'] = sentence
         sheet[f'A{idx}'] = key
         sheet[f'B{idx}'] = sentences[key]['tr']
         sheet[f'C{idx}'] = sentences[key]['vin']
