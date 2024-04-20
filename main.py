@@ -21,7 +21,7 @@ poppler_path=os.environ.get('POPPLER_PATH')
 
 files = [os.path.join("./skany", f) for f in os.listdir('./skany') if os.path.isfile(os.path.join("./skany", f)) and f.endswith('.pdf')]
 # print(files)
-images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in list(reversed(files))[50:65]]
+images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in list(reversed(files))]
 
 # print(images)
 
@@ -78,14 +78,15 @@ def find_patterns(ocr_text):
             elif '78 ust. 2 pkt 1' in art:
                 czynnosc = 'ZBYCIE'
 
-            address_pattern = r'(?<=na rzecz )([\w\s©\[\],]+)(?=w związku)'
+            address_pattern = r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)'
             address = re.search(address_pattern, text)
-            
+            address = 'błąd odczytu' if not address else address[0]
+
             date_pattern = r'(?<=Poznań, dnia ).+(?=r)'
             date = re.search(date_pattern, text)
-            date = date[0].replace('—', '.')
+            date = date[0].replace('—', '.').replace('-', '.')
             
-            brand_pattern = r'(?<=marki)[\w\s]+(?=o)'
+            brand_pattern = r'(?<=marki\s)[\w\s\\/-]+(?=o)'
             brand = re.findall(brand_pattern, text)
             brand = brand[0].strip()
             
@@ -94,7 +95,7 @@ def find_patterns(ocr_text):
         except IndexError as e:
             print(text)
             print(kt, 'error', e)
-            print(kt, name, vin, tr, art, date, brand, address[0])
+            print(kt, name, vin, tr, art, date, brand, address)
             print('---' * 50)
         except TypeError as e:
             print(kt, 'type error')
