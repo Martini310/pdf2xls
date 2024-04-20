@@ -55,8 +55,9 @@ def find_patterns(ocr_text):
             # print(name)
             name = name[0].replace('\n', ' ').strip()
 
-            vin_pattern = r'(?<=VIN:)[\s —-]*([A-Z0-9]*)'
+            vin_pattern = r'(?<=VIN:)[\s —-]*([A-Z0-9—-]*)'
             vin = re.findall(vin_pattern, text)
+            vin = 'błąd odczytu' if not vin else vin[0]
 
             art_pattern = r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)'
             art = re.search(art_pattern, text)
@@ -69,7 +70,7 @@ def find_patterns(ocr_text):
                 tr = re.findall(tr_pattern, text)
                 print(tr)
                 tr = tr[0].replace('\n', ' ')
-            # tr=''
+
             czynnosc = ''
             if '73aa ust. 1 pkt 3' in art:
                 czynnosc = 'SPROWADZONY'
