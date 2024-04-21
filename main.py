@@ -25,6 +25,89 @@ images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in lis
 
 # print(images)
 
+
+class ReadPDF:
+    def __init__(self, path) -> None:
+        self.path = path
+        self.files = [os.path.join(self.path, f) for f in os.listdir(self.path) if os.path.isfile(os.path.join(self.path, f)) and f.endswith('.pdf')]
+        self.images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in list(reversed(self.files))]
+
+    def perform_ocr(self, images):
+        text = []
+        for image in images:
+            extracted_text = []
+            for page in image:
+                text = pytesseract.image_to_string(page, config=custom_config)
+                extracted_text.append(text)
+            text.append('\n'.join(extracted_text))
+        return ocr_text
+
+    def find_patterns(self, ocr_text):
+        output = {}
+        for text in ocr_text:
+            try:
+                tmp = kt or '1'
+                kt_pattern = r'(?<=KT.5410.[0-9].)([0-9]+)'
+                kt = re.findall(kt_pattern, text)
+                if not kt:
+                    kt = tmp
+                else:
+                    kt = kt[0]
+                
+                # print(text)
+                name_pattern = r'(?<=na rzecz )(([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*)+)'
+                name = re.search(name_pattern, text)
+                # print(name)
+                name = name[0].replace('\n', ' ').strip()
+
+                vin_pattern = r'(?<=VIN:)[\s —-]*([A-Z0-9—-]*)'
+                vin = re.findall(vin_pattern, text)
+                vin = 'błąd odczytu' if not vin else vin[0]
+
+                art_pattern = r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)'
+                art = re.search(art_pattern, text)
+                art = art[0].replace('\n', ' ')
+
+                if '73aa ust. 1 pkt 3' in art:
+                    tr = ''
+                else:
+                    tr_pattern = r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b'
+                    tr = re.findall(tr_pattern, text)
+                    print(tr)
+                    tr = tr[0].replace('\n', ' ')
+
+                czynnosc = ''
+                if '73aa ust. 1 pkt 3' in art:
+                    czynnosc = 'SPROWADZONY'
+                elif '73aa ust. 1 pkt 1' in art:
+                    czynnosc = 'NABYCIE'
+                elif '78 ust. 2 pkt 1' in art:
+                    czynnosc = 'ZBYCIE'
+
+                address_pattern = r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)'
+                address = re.search(address_pattern, text)
+                address = 'błąd odczytu' if not address else address[0]
+
+                date_pattern = r'(?<=Poznań, dnia ).+(?=r)'
+                date = re.search(date_pattern, text)
+                date = date[0].replace('—', '.').replace('-', '.')
+                
+                brand_pattern = r'(?<=marki\s)[\w\s\\/-]+(?=o)'
+                brand = re.findall(brand_pattern, text)
+                brand = brand[0].strip()
+                
+                output[kt] = {'name': name, 'vin': vin[0], 'tr': tr, 'date': date, 'art': art, 'czynnosc': czynnosc}
+            except IndexError as e:
+                print(text)
+                print(kt, 'error', e)
+                print(kt, name, vin, tr, art, date, brand, address)
+                print('---' * 50)
+            except TypeError as e:
+                print(kt, 'type error')
+                print(text)
+        return output
+    
+
 def perform_ocr(images):
     ocr_text = []
     for image in images:
@@ -42,10 +125,11 @@ def find_patterns(ocr_text):
     output = {}
     for text in ocr_text:
         try:
+            tmp = kt or '1'
             kt_pattern = r'(?<=KT.5410.[0-9].)([0-9]+)'
             kt = re.findall(kt_pattern, text)
             if not kt:
-                kt = ''
+                kt = tmp
             else:
                 kt = kt[0]
             
