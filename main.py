@@ -21,7 +21,7 @@ poppler_path=os.environ.get('POPPLER_PATH')
 
 files = [os.path.join("./skany", f) for f in os.listdir('./skany') if os.path.isfile(os.path.join("./skany", f)) and f.endswith('.pdf')]
 # print(files)
-images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in list(reversed(files))]
+# images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in list(reversed(files))]
 
 # print(images)
 
@@ -119,7 +119,7 @@ def perform_ocr(images):
         ocr_text.append('\n'.join(extracted_text))
     return ocr_text
 
-ocr_text = perform_ocr(images)
+# ocr_text = perform_ocr(images)
 # print(ocr_text)
 
 def find_patterns(ocr_text):
@@ -190,7 +190,7 @@ def find_patterns(ocr_text):
     return output
 
 
-sentences = find_patterns(ocr_text)
+# sentences = find_patterns(ocr_text)
 # print(sentences)
 
 
@@ -215,27 +215,58 @@ def write_to_excel_from_ocr(sentences, excel_file_path):
     workbook.save(excel_file_path)
 
 # Usage:
-write_to_excel_from_ocr(sentences, 'output_ocr.xlsx')
+# write_to_excel_from_ocr(sentences, 'output_ocr.xlsx')
 
 
 
-# doc = Document()
+doc = Document()
 
-# font = doc.styles['Normal'].font
+font = doc.styles['Normal'].font
 
-# font.name = 'Calibri'
-# font.size = Pt(10)
+font.name = 'Calibri'
+font.size = Pt(10)
 
-# paragraph = doc.add_paragraph('Starostwo Powiatowe w Poznaniu\nul. Jackowskiego 18\n60-509 Poznań')
-# paragraph_format = paragraph.paragraph_format
+paragraph = doc.add_paragraph('Poznań dnia \n')
+paragraph_format = paragraph.paragraph_format
 
-# paragraph_format.line_spacing = 0.75
+paragraph_format.line_spacing = 0.75
+paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
 
-# paragraph = doc.add_paragraph('Adam Nowak\nul. Długa 1\n12-345 Zbąszyń')
-# paragraph_format = paragraph.paragraph_format
+paragraph = doc.add_paragraph('Starostwo Powiatowe w Poznaniu\nul. Jackowskiego 18\n60-509 Poznań')
+paragraph_format = paragraph.paragraph_format
 
-# paragraph_format.line_spacing = 0.75
-# paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+paragraph_format.line_spacing = 0.75
+paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
-# doc.save('test.docx')
+
+paragraph = doc.add_paragraph('\nDECYZJA NR ')
+paragraph_format = paragraph.paragraph_format
+
+paragraph_format.line_spacing = 0.75
+paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+paragraph.runs[0].bold = True
+
+
+name = 'Martin Brzeziński'
+pesel = '293793759'
+marka = 'ford'
+tr = 'PZ 12345'
+vin = 'JFKKSAFHYJK98987'
+
+podstawa_prawna = f"""Na podstawie art. 104 ustawy z dnia 14 czerwca 1960 r. – kodeks postepowania administracyjnego (Dz. U. z 2023 r., poz. 775 t. j.) w związku z art. 140mb ust. 1 oraz art. 73aa ust. 1 pkt 1 ustawy z dnia 20 czerwca 1997 r. – Prawo o ruchu drogowym (Dz. U. z 2023 r., poz. 1047 t. j.) po rozpatrzeniu sprawy Pana/i {name}. (PESEL: {pesel}) będącego właścicielem pojazdu marki {marka}. o numerze rejestracyjnym {tr}, nr nadwozia: {vin}."""
+
+paragraph = doc.add_paragraph(podstawa_prawna)
+paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+
+paragraph = doc.add_paragraph('\nSTAROSTA\n')
+paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+paragraph.runs[0].bold = True
+
+kara = """nakłada karę pieniężną w wysokości 500 zł (słownie: pięćset zł) w związku z niedopełnieniem obowiązku złożenia wniosku o rejestrację w terminie 30 dni od dnia nabycia wyżej wymienionego pojazdu, tj. obowiązku wynikającego z art. 73aa ust. 1 pkt 1 ustawy - Prawo o ruchu drogowym."""
+
+paragraph = doc.add_paragraph(kara)
+paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+doc.save('test.docx')
