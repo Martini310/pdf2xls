@@ -44,13 +44,14 @@ class ReadPDF:
 
     def find_patterns(self, ocr_text):
         output = {}
+        kt = ''
         for text in ocr_text:
             try:
-                tmp = kt or '1'
+                tmp = kt if kt else '1'
                 kt_pattern = r'(?<=KT.5410.[0-9].)([0-9]+)'
                 kt = re.findall(kt_pattern, text)
                 if not kt:
-                    kt = tmp
+                    kt = str(int(tmp) + 1)
                 else:
                     kt = kt[0]
                 
@@ -123,13 +124,14 @@ ocr_text = perform_ocr(images)
 
 def find_patterns(ocr_text):
     output = {}
+    kt = ''
     for text in ocr_text:
         try:
-            tmp = kt or '1'
+            tmp = kt if kt else '0'
             kt_pattern = r'(?<=KT.5410.[0-9].)([0-9]+)'
             kt = re.findall(kt_pattern, text)
             if not kt:
-                kt = tmp
+                kt = str(int(tmp) + 1)
             else:
                 kt = kt[0]
             
@@ -141,7 +143,7 @@ def find_patterns(ocr_text):
 
             vin_pattern = r'(?<=VIN:)[\s —-]*([A-Z0-9—-]*)'
             vin = re.findall(vin_pattern, text)
-            vin = 'błąd odczytu' if not vin else vin[0]
+            vin = 'błąd odczytu' if not vin else vin
 
             art_pattern = r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)'
             art = re.search(art_pattern, text)
