@@ -6,8 +6,8 @@ import pdf2image
 import dotenv
 from openpyxl import Workbook
 from docx import Document
-from docx.shared import Pt, Cm
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt, Cm, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 import pytesseract
 
 
@@ -277,6 +277,10 @@ def create_docx():
     font.size = Pt(10)
 
     section = doc.sections[0]
+    doc.styles['Normal'].paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+
+    section.page_width = Inches(8.27)   # Equivalent to 210 mm
+    section.page_height = Inches(11.69)  # Equivalent to 297 mm
 
     section.top_margin = Cm(2.5)
     section.bottom_margin = Cm(2.5)
@@ -285,19 +289,19 @@ def create_docx():
 
     paragraph = doc.add_paragraph('Poznań dnia ')
 
-    paragraph.paragraph_format.line_spacing = 1
+    # paragraph.paragraph_format.line_spacing = 1
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
 
     paragraph = doc.add_paragraph('Starosta Poznański\nul. Jackowskiego 18\n60-509 Poznań')
 
-    paragraph.paragraph_format.line_spacing = 1
+    # paragraph.paragraph_format.line_spacing = 1
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
 
     paragraph = doc.add_paragraph('\nDECYZJA NR ')
 
-    paragraph.paragraph_format.line_spacing = 1
+    # paragraph.paragraph_format.line_spacing = 1
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.runs[0].bold = True
 
@@ -327,21 +331,21 @@ def create_docx():
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.runs[0].bold = True
     
-    uzasadnienia = ["Tutejszy organ powziął informację z urzędu o tym, że strona w postępowaniu nie złożyła w terminie wniosku o rejestrację pojazdu nabytego na terytorium Rzeczpospolitej Polskiej. Z treści umowy/faktury nr ………….. pomiędzy ………………………. (sprzedającym) a …………………………. (kupującym) wynika, że strona nabyła pojazd w dniu ………………………….. r.",
-    "  Zgodnie z art. 73aa ust. 1 pkt 1 ustawy Prawo o ruchu drogowym właściciel pojazdu jest obowiązany złożyć wniosek o jego rejestrację w terminie nieprzekraczającym 30 dni od dnia jego nabycia na terytorium Rzeczpospolitej Polskiej.",
-    "  W związku z niedopełnieniem wyrażonego w ustawie – Prawo o ruchu drogowym obowiązku, tutejszy organ wszczął z urzędu w dniu ………………………. r. postępowanie administracyjne w przedmiocie wyżej wskazanego naruszenia o czym pisemnie zawiadomił stronę. Skutecznie doręczone zawiadomienie o wszczęciu postepowania umożliwiło stronie czynny udział w toczącym się postępowaniu i wypowiedzenie się w przedmiotowej sprawie. Strona nie złożyła pisemnego wyjaśnienia.",
-    "  Zgodnie z art. 140mb ust. 1 ustawy Prawo o ruchu drogowym, kto będąc właścicielem pojazdu obowiązanym do złożenia wniosku o rejestracje pojazdu w terminie, o którym mowa w art. 73aa ust. 1, nie złoży tego wniosku w terminie, podlega karze w wysokości 500 zł.",
-    "  Mając na uwadze powyższe organ ustalił, że zasadne jest zastosowanie kary w wysokości 500 zł (słownie: pięćset zł).",
-    "  W myśl art. 140n ust. 6 Prawo o ruchu drogowym do kar pieniężnych, o których mowa w art. 140ma i art. 140mb, nie stosuje się  przepisów art. 189d-189f ustawy z dnia 14 czerwca 1960 r. –Kodeks postepowania administracyjnego tj.:",
-    "  art. 189d wymierzając administracyjną karę pieniężną, organ administracji publicznej bierze pod uwagę:"]
+    uzasadnienia = """Tutejszy organ powziął informację z urzędu o tym, że strona w postępowaniu nie złożyła w terminie wniosku o rejestrację pojazdu nabytego na terytorium Rzeczpospolitej Polskiej. Z treści umowy/faktury nr ………….. pomiędzy ………………………. (sprzedającym) a …………………………. (kupującym) wynika, że strona nabyła pojazd w dniu ………………………….. r.
+    Zgodnie z art. 73aa ust. 1 pkt 1 ustawy Prawo o ruchu drogowym właściciel pojazdu jest obowiązany złożyć wniosek o jego rejestrację w terminie nieprzekraczającym 30 dni od dnia jego nabycia na terytorium Rzeczpospolitej Polskiej.
+    W związku z niedopełnieniem wyrażonego w ustawie – Prawo o ruchu drogowym obowiązku, tutejszy organ wszczął z urzędu w dniu ………………………. r. postępowanie administracyjne w przedmiocie wyżej wskazanego naruszenia o czym pisemnie zawiadomił stronę. Skutecznie doręczone zawiadomienie o wszczęciu postepowania umożliwiło stronie czynny udział w toczącym się postępowaniu i wypowiedzenie się w przedmiotowej sprawie. Strona nie złożyła pisemnego wyjaśnienia.
+    Zgodnie z art. 140mb ust. 1 ustawy Prawo o ruchu drogowym, kto będąc właścicielem pojazdu obowiązanym do złożenia wniosku o rejestracje pojazdu w terminie, o którym mowa w art. 73aa ust. 1, nie złoży tego wniosku w terminie, podlega karze w wysokości 500 zł.
+    Mając na uwadze powyższe organ ustalił, że zasadne jest zastosowanie kary w wysokości 500 zł (słownie: pięćset zł).
+    W myśl art. 140n ust. 6 Prawo o ruchu drogowym do kar pieniężnych, o których mowa w art. 140ma i art. 140mb, nie stosuje się  przepisów art. 189d-189f ustawy z dnia 14 czerwca 1960 r. –Kodeks postepowania administracyjnego tj.:
+    art. 189d wymierzając administracyjną karę pieniężną, organ administracji publicznej bierze pod uwagę:"""
 
     
-    for uzasadnienie in uzasadnienia:
-        par1 = doc.add_paragraph(uzasadnienie)
-        par1.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        # paragraph.paragraph_format.line_spacing = 1
-        par1.paragraph_format.space_before = Cm(0)
-        par1.paragraph_format.space_before = Cm(0)
+
+    par1 = doc.add_paragraph(uzasadnienia)
+    par1.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    paragraph.paragraph_format.line_spacing = 1
+    # par1.paragraph_format.space_before = Cm(0)
+    # par1.paragraph_format.space_before = Cm(0)
     
     przepisy = ["wagę i okoliczności naruszenia prawa, w szczególności potrzebę ochrony życia lub zdrowia, ochrony mienia w znacznych rozmiarach lub ochrony ważnego interesu publicznego lub wyjątkowo ważnego interesu strony oraz czas trwania tego naruszenia;",
         "częstotliwość niedopełniania w przeszłości obowiązku albo naruszania zakazu tego samego rodzaju co niedopełnienie obowiązku albo naruszenie zakazu, w następstwie którego ma być nałożona kara;",
