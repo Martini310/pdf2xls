@@ -6,7 +6,7 @@ import pdf2image
 import dotenv
 from openpyxl import Workbook
 from docx import Document
-from docx.shared import Pt
+from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import pytesseract
 
@@ -276,25 +276,29 @@ def create_docx():
     font.name = 'Calibri'
     font.size = Pt(10)
 
-    paragraph = doc.add_paragraph('Poznań dnia \n')
-    paragraph_format = paragraph.paragraph_format
+    section = doc.sections[0]
 
-    paragraph_format.line_spacing = 0.75
-    paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    section.top_margin = Cm(2.5)
+    section.bottom_margin = Cm(2.5)
+    section.left_margin = Cm(2.5)
+    section.right_margin = Cm(2.5)
+
+    paragraph = doc.add_paragraph('Poznań dnia ')
+
+    paragraph.paragraph_format.line_spacing = 1
+    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
 
-    paragraph = doc.add_paragraph('Starostwo Powiatowe w Poznaniu\nul. Jackowskiego 18\n60-509 Poznań')
-    paragraph_format = paragraph.paragraph_format
+    paragraph = doc.add_paragraph('Starosta Poznański\nul. Jackowskiego 18\n60-509 Poznań')
 
-    paragraph_format.line_spacing = 0.75
-    paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    paragraph.paragraph_format.line_spacing = 1
+    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
 
     paragraph = doc.add_paragraph('\nDECYZJA NR ')
-    paragraph_format = paragraph.paragraph_format
 
-    paragraph_format.line_spacing = 0.75
-    paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.paragraph_format.line_spacing = 1
+    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.runs[0].bold = True
 
 
@@ -310,7 +314,7 @@ def create_docx():
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
 
-    paragraph = doc.add_paragraph('\nSTAROSTA\n')
+    paragraph = doc.add_paragraph('Starosta')
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.runs[0].bold = True
 
@@ -319,4 +323,84 @@ def create_docx():
     paragraph = doc.add_paragraph(kara)
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
+    paragraph = doc.add_paragraph('Uzasadnienie')
+    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.runs[0].bold = True
+    
+    uzasadnienia = ["Tutejszy organ powziął informację z urzędu o tym, że strona w postępowaniu nie złożyła w terminie wniosku o rejestrację pojazdu nabytego na terytorium Rzeczpospolitej Polskiej. Z treści umowy/faktury nr ………….. pomiędzy ………………………. (sprzedającym) a …………………………. (kupującym) wynika, że strona nabyła pojazd w dniu ………………………….. r.",
+    "  Zgodnie z art. 73aa ust. 1 pkt 1 ustawy Prawo o ruchu drogowym właściciel pojazdu jest obowiązany złożyć wniosek o jego rejestrację w terminie nieprzekraczającym 30 dni od dnia jego nabycia na terytorium Rzeczpospolitej Polskiej.",
+    "  W związku z niedopełnieniem wyrażonego w ustawie – Prawo o ruchu drogowym obowiązku, tutejszy organ wszczął z urzędu w dniu ………………………. r. postępowanie administracyjne w przedmiocie wyżej wskazanego naruszenia o czym pisemnie zawiadomił stronę. Skutecznie doręczone zawiadomienie o wszczęciu postepowania umożliwiło stronie czynny udział w toczącym się postępowaniu i wypowiedzenie się w przedmiotowej sprawie. Strona nie złożyła pisemnego wyjaśnienia.",
+    "  Zgodnie z art. 140mb ust. 1 ustawy Prawo o ruchu drogowym, kto będąc właścicielem pojazdu obowiązanym do złożenia wniosku o rejestracje pojazdu w terminie, o którym mowa w art. 73aa ust. 1, nie złoży tego wniosku w terminie, podlega karze w wysokości 500 zł.",
+    "  Mając na uwadze powyższe organ ustalił, że zasadne jest zastosowanie kary w wysokości 500 zł (słownie: pięćset zł).",
+    "  W myśl art. 140n ust. 6 Prawo o ruchu drogowym do kar pieniężnych, o których mowa w art. 140ma i art. 140mb, nie stosuje się  przepisów art. 189d-189f ustawy z dnia 14 czerwca 1960 r. –Kodeks postepowania administracyjnego tj.:",
+    "  art. 189d wymierzając administracyjną karę pieniężną, organ administracji publicznej bierze pod uwagę:"]
+
+    
+    for uzasadnienie in uzasadnienia:
+        par1 = doc.add_paragraph(uzasadnienie)
+        par1.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        # paragraph.paragraph_format.line_spacing = 1
+        par1.paragraph_format.space_before = Cm(0)
+        par1.paragraph_format.space_before = Cm(0)
+    
+    przepisy = ["wagę i okoliczności naruszenia prawa, w szczególności potrzebę ochrony życia lub zdrowia, ochrony mienia w znacznych rozmiarach lub ochrony ważnego interesu publicznego lub wyjątkowo ważnego interesu strony oraz czas trwania tego naruszenia;",
+        "częstotliwość niedopełniania w przeszłości obowiązku albo naruszania zakazu tego samego rodzaju co niedopełnienie obowiązku albo naruszenie zakazu, w następstwie którego ma być nałożona kara;",
+        "uprzednie ukaranie za to samo zachowanie za przestępstwo, przestępstwo skarbowe, wykroczenie lub wykroczenie skarbowe;",
+        "stopień przyczynienia się strony, na którą jest nakładana administracyjna kara pieniężna, do powstania naruszenia prawa;",
+        "działania podjęte przez stronę dobrowolnie w celu uniknięcia skutków naruszenia prawa;",
+        "wysokość korzyści, którą strona osiągnęła, lub straty, której uniknęła;",
+        "w przypadku osoby fizycznej - warunki osobiste strony, na którą administracyjna kara pieniężna jest nakładana;",
+    ]
+    
+    for item in przepisy:
+        paragraph = doc.add_paragraph(item)
+
+        # Set the numbering style to '1, 2, 3' (ordered list)
+        paragraph.style = 'ListNumber'
+        
+        
+    przepisy_2 = """art. 189e w przypadku gdy do naruszenia prawa doszło wskutek działania siły wyższej, strona nie podlega ukaraniu;
+art. 189f
+1. organ administracji publicznej, w drodze decyzji, odstępuje od nałożenia administracyjnej kary pieniężnej i poprzestaje na pouczeniu, jeżeli:
+"""
+    paragraph = doc.add_paragraph(przepisy_2)
+    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.THAI_JUSTIFY
+        
+    przepisy_3 = ["waga naruszenia prawa jest znikoma, a strona zaprzestała naruszania prawa lub",
+        "za to samo zachowanie prawomocną decyzją na stronę została uprzednio nałożona administracyjna kara pieniężna przez inny uprawniony organ administracji publicznej lub strona została prawomocnie ukarana za wykroczenie lub wykroczenie skarbowe, lub prawomocnie skazana za przestępstwo lub przestępstwo skarbowe i uprzednia kara spełnia cele, dla których miałaby być nałożona administracyjna kara pieniężna.",
+    ]
+    
+    for item in przepisy_3:
+        paragraph = doc.add_paragraph(item)
+        paragraph.style = 'ListNumber'
+        
+    przepisy_4 = """2. w przypadkach innych niż wymienione w § 1, jeżeli pozwoli to na spełnienie celów, dla których miałaby być nałożona administracyjna kara pieniężna, organ administracji publicznej, w drodze postanowienia, może wyznaczyć stronie termin do przedstawienia dowodów potwierdzających:"""
+    
+    paragraph = doc.add_paragraph(przepisy_4)
+    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.THAI_JUSTIFY
+    
+    przepisy_5 = ["usunięcie naruszenia prawa lub",
+        "powiadomienie właściwych podmiotów o stwierdzonym naruszeniu prawa, określając termin i sposób powiadomienia."
+        ]
+    for item in przepisy_5:
+        paragraph = doc.add_paragraph(item)
+        paragraph.style = 'ListNumber'
+    
+    przepisy_6 = """3. organ administracji publicznej w przypadkach, o których mowa w § 2, odstępuje od nałożenia administracyjnej kary pieniężnej i poprzestaje na pouczeniu, jeżeli strona przedstawiła dowody, potwierdzające wykonanie postanowienia.
+	W związku z powyższym przywołany przepis art. 140n ust. 6 wyklucza możliwość odstąpienia od nałożenia kary pieniężnej i obniżenia jej wysokości.
+	W tej sytuacji orzeka się jak w sentencji.
+    """
+    paragraph = doc.add_paragraph(przepisy_6)
+    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.THAI_JUSTIFY
+    
+    paragraph = doc.add_paragraph('\nPouczenie\n')
+    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.runs[0].bold = True
+    
+    
+    
+    
+    
     doc.save('test.docx')
+    
+create_docx()
