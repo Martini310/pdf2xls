@@ -278,7 +278,7 @@ def create_docx():
 
     section = doc.sections[0]
     doc.styles['Normal'].paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
-
+    
     section.page_width = Inches(8.27)   # Equivalent to 210 mm
     section.page_height = Inches(11.69)  # Equivalent to 297 mm
 
@@ -288,20 +288,14 @@ def create_docx():
     section.right_margin = Cm(2.5)
 
     paragraph = doc.add_paragraph('Poznań dnia ')
-
-    # paragraph.paragraph_format.line_spacing = 1
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
 
     paragraph = doc.add_paragraph('Starosta Poznański\nul. Jackowskiego 18\n60-509 Poznań')
-
-    # paragraph.paragraph_format.line_spacing = 1
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
 
     paragraph = doc.add_paragraph('\nDECYZJA NR ')
-
-    # paragraph.paragraph_format.line_spacing = 1
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.runs[0].bold = True
 
@@ -331,21 +325,19 @@ def create_docx():
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.runs[0].bold = True
     
-    uzasadnienia = """Tutejszy organ powziął informację z urzędu o tym, że strona w postępowaniu nie złożyła w terminie wniosku o rejestrację pojazdu nabytego na terytorium Rzeczpospolitej Polskiej. Z treści umowy/faktury nr ………….. pomiędzy ………………………. (sprzedającym) a …………………………. (kupującym) wynika, że strona nabyła pojazd w dniu ………………………….. r.
-    Zgodnie z art. 73aa ust. 1 pkt 1 ustawy Prawo o ruchu drogowym właściciel pojazdu jest obowiązany złożyć wniosek o jego rejestrację w terminie nieprzekraczającym 30 dni od dnia jego nabycia na terytorium Rzeczpospolitej Polskiej.
-    W związku z niedopełnieniem wyrażonego w ustawie – Prawo o ruchu drogowym obowiązku, tutejszy organ wszczął z urzędu w dniu ………………………. r. postępowanie administracyjne w przedmiocie wyżej wskazanego naruszenia o czym pisemnie zawiadomił stronę. Skutecznie doręczone zawiadomienie o wszczęciu postepowania umożliwiło stronie czynny udział w toczącym się postępowaniu i wypowiedzenie się w przedmiotowej sprawie. Strona nie złożyła pisemnego wyjaśnienia.
-    Zgodnie z art. 140mb ust. 1 ustawy Prawo o ruchu drogowym, kto będąc właścicielem pojazdu obowiązanym do złożenia wniosku o rejestracje pojazdu w terminie, o którym mowa w art. 73aa ust. 1, nie złoży tego wniosku w terminie, podlega karze w wysokości 500 zł.
-    Mając na uwadze powyższe organ ustalił, że zasadne jest zastosowanie kary w wysokości 500 zł (słownie: pięćset zł).
-    W myśl art. 140n ust. 6 Prawo o ruchu drogowym do kar pieniężnych, o których mowa w art. 140ma i art. 140mb, nie stosuje się  przepisów art. 189d-189f ustawy z dnia 14 czerwca 1960 r. –Kodeks postepowania administracyjnego tj.:
-    art. 189d wymierzając administracyjną karę pieniężną, organ administracji publicznej bierze pod uwagę:"""
-
+    uzasadnienia = ["\tTutejszy organ powziął informację z urzędu o tym, że strona w postępowaniu nie złożyła w terminie wniosku o rejestrację pojazdu nabytego na terytorium Rzeczpospolitej Polskiej. Z treści umowy/faktury nr ………….. pomiędzy ………………………. (sprzedającym) a …………………………. (kupującym) wynika, że strona nabyła pojazd w dniu ………………………….. r.",
+        "\tZgodnie z art. 73aa ust. 1 pkt 1 ustawy Prawo o ruchu drogowym właściciel pojazdu jest obowiązany złożyć wniosek o jego rejestrację w terminie nieprzekraczającym 30 dni od dnia jego nabycia na terytorium Rzeczpospolitej Polskiej.",
+        "\tW związku z niedopełnieniem wyrażonego w ustawie – Prawo o ruchu drogowym obowiązku, tutejszy organ wszczął z urzędu w dniu ………………………. r. postępowanie administracyjne w przedmiocie wyżej wskazanego naruszenia o czym pisemnie zawiadomił stronę. Skutecznie doręczone zawiadomienie o wszczęciu postepowania umożliwiło stronie czynny udział w toczącym się postępowaniu i wypowiedzenie się w przedmiotowej sprawie. Strona nie złożyła pisemnego wyjaśnienia.",
+        "\tZgodnie z art. 140mb ust. 1 ustawy Prawo o ruchu drogowym, kto będąc właścicielem pojazdu obowiązanym do złożenia wniosku o rejestracje pojazdu w terminie, o którym mowa w art. 73aa ust. 1, nie złoży tego wniosku w terminie, podlega karze w wysokości 500 zł.",
+        "\tMając na uwadze powyższe organ ustalił, że zasadne jest zastosowanie kary w wysokości 500 zł (słownie: pięćset zł).",
+        "\tW myśl art. 140n ust. 6 Prawo o ruchu drogowym do kar pieniężnych, o których mowa w art. 140ma i art. 140mb, nie stosuje się  przepisów art. 189d-189f ustawy z dnia 14 czerwca 1960 r. –Kodeks postepowania administracyjnego tj.:",
+        "art. 189d wymierzając administracyjną karę pieniężną, organ administracji publicznej bierze pod uwagę:",
+    ]
     
-
-    par1 = doc.add_paragraph(uzasadnienia)
-    par1.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    paragraph.paragraph_format.line_spacing = 1
-    # par1.paragraph_format.space_before = Cm(0)
-    # par1.paragraph_format.space_before = Cm(0)
+    for uzasadnienie in uzasadnienia:
+        par1 = doc.add_paragraph(uzasadnienie)
+        par1.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        par1.paragraph_format.space_after = Cm(0)
     
     przepisy = ["wagę i okoliczności naruszenia prawa, w szczególności potrzebę ochrony życia lub zdrowia, ochrony mienia w znacznych rozmiarach lub ochrony ważnego interesu publicznego lub wyjątkowo ważnego interesu strony oraz czas trwania tego naruszenia;",
         "częstotliwość niedopełniania w przeszłości obowiązku albo naruszania zakazu tego samego rodzaju co niedopełnienie obowiązku albo naruszenie zakazu, w następstwie którego ma być nałożona kara;",
@@ -358,53 +350,98 @@ def create_docx():
     
     for item in przepisy:
         paragraph = doc.add_paragraph(item)
-
-        # Set the numbering style to '1, 2, 3' (ordered list)
         paragraph.style = 'ListNumber'
+        paragraph.paragraph_format.left_indent = Inches(0.5)
         
         
-    przepisy_2 = """art. 189e w przypadku gdy do naruszenia prawa doszło wskutek działania siły wyższej, strona nie podlega ukaraniu;
-art. 189f
-1. organ administracji publicznej, w drodze decyzji, odstępuje od nałożenia administracyjnej kary pieniężnej i poprzestaje na pouczeniu, jeżeli:
-"""
-    paragraph = doc.add_paragraph(przepisy_2)
-    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.THAI_JUSTIFY
+    przepisy_2 = ["art. 189e w przypadku gdy do naruszenia prawa doszło wskutek działania siły wyższej, strona nie podlega ukaraniu;",
+        "art. 189f",
+        "1. organ administracji publicznej, w drodze decyzji, odstępuje od nałożenia administracyjnej kary pieniężnej i poprzestaje na pouczeniu, jeżeli:"
+        ]
+
+    for przepis in przepisy_2:
+        par1 = doc.add_paragraph(przepis)
+        par1.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        par1.paragraph_format.space_after = Cm(0)
+        
         
     przepisy_3 = ["waga naruszenia prawa jest znikoma, a strona zaprzestała naruszania prawa lub",
         "za to samo zachowanie prawomocną decyzją na stronę została uprzednio nałożona administracyjna kara pieniężna przez inny uprawniony organ administracji publicznej lub strona została prawomocnie ukarana za wykroczenie lub wykroczenie skarbowe, lub prawomocnie skazana za przestępstwo lub przestępstwo skarbowe i uprzednia kara spełnia cele, dla których miałaby być nałożona administracyjna kara pieniężna.",
     ]
     
     for item in przepisy_3:
-        paragraph = doc.add_paragraph(item)
-        paragraph.style = 'ListNumber'
-        
+        paragraph = doc.add_paragraph(item, style='List Number 2')
+        paragraph.paragraph_format.space_after = Cm(0)
+
+    
     przepisy_4 = """2. w przypadkach innych niż wymienione w § 1, jeżeli pozwoli to na spełnienie celów, dla których miałaby być nałożona administracyjna kara pieniężna, organ administracji publicznej, w drodze postanowienia, może wyznaczyć stronie termin do przedstawienia dowodów potwierdzających:"""
     
     paragraph = doc.add_paragraph(przepisy_4)
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.THAI_JUSTIFY
+    paragraph.paragraph_format.space_after = Cm(0)
+
     
     przepisy_5 = ["usunięcie naruszenia prawa lub",
         "powiadomienie właściwych podmiotów o stwierdzonym naruszeniu prawa, określając termin i sposób powiadomienia."
         ]
     for item in przepisy_5:
-        paragraph = doc.add_paragraph(item)
-        paragraph.style = 'ListNumber'
+        paragraph = doc.add_paragraph(item, style='List Number 3')
+        paragraph.paragraph_format.left_indent = Inches(0.5)
+        paragraph.paragraph_format.space_after = Cm(0)
+
+
     
-    przepisy_6 = """3. organ administracji publicznej w przypadkach, o których mowa w § 2, odstępuje od nałożenia administracyjnej kary pieniężnej i poprzestaje na pouczeniu, jeżeli strona przedstawiła dowody, potwierdzające wykonanie postanowienia.
-	W związku z powyższym przywołany przepis art. 140n ust. 6 wyklucza możliwość odstąpienia od nałożenia kary pieniężnej i obniżenia jej wysokości.
-	W tej sytuacji orzeka się jak w sentencji.
-    """
-    paragraph = doc.add_paragraph(przepisy_6)
-    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.THAI_JUSTIFY
+    przepisy_6 = ["3. organ administracji publicznej w przypadkach, o których mowa w § 2, odstępuje od nałożenia administracyjnej kary pieniężnej i poprzestaje na pouczeniu, jeżeli strona przedstawiła dowody, potwierdzające wykonanie postanowienia.",
+        "W związku z powyższym przywołany przepis art. 140n ust. 6 wyklucza możliwość odstąpienia od nałożenia kary pieniężnej i obniżenia jej wysokości.",
+        "W tej sytuacji orzeka się jak w sentencji."
+    ]
+    
+    for przepis in przepisy_6:
+        paragraph = doc.add_paragraph(przepis)
+        paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        paragraph.paragraph_format.space_after = Cm(0)
+        
     
     paragraph = doc.add_paragraph('\nPouczenie\n')
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.runs[0].bold = True
     
     
+    pouczenia = [
+        "Zgodnie z art. 140n ust 5 ustawy Prawo o ruchu drogowym kary pieniężne są wnoszone na rachunek bankowy starostwa w terminie 14 dni od dnia, w którym decyzja o nałożeniu kary pieniężnej stała się ostateczna.",
+        "Wpłaty należy dokonać na konto numer: 7710 3012 4700 0000 0034 9162 41 w tytule podając nr decyzji KT.5410.7.00049.2024",
+        "Od niniejszej decyzji przysługuje odwołanie do Samorządowego Kolegium Odwoławczego w Poznaniu, za pośrednictwem Starosty Poznańskiego, w terminie 14 dni od daty jej doręczenia.",
+        "W trakcie biegu terminu od wniesienia odwołania stronie służy także prawo do zrzeczenia się prawa do wniesienia odwołania od decyzji. Z dniem doręczenia organowi oświadczenia o zrzeczeniu się prawa do wniesienia odwołania, decyzja staje się ostateczna i prawomocna.",
+    ]
+    
+    paragraph = doc.add_paragraph(pouczenia[0])
+    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    
+    paragraph = doc.add_paragraph()
+    paragraph.add_run('Wpłaty należy dokonać na konto numer: ')
+    paragraph.add_run('7710 3012 4700 0000 0034 9162 41').bold = True
+    paragraph.add_run(' w tytule podając nr decyzji ')
+    paragraph.add_run('KT.5410.7.00049.2024').bold = True
+
+    paragraph = doc.add_paragraph(pouczenia[2])
+    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    
+    paragraph = doc.add_paragraph(pouczenia[3])
+    paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    
+    paragraph = doc.add_paragraph('\n' * 11)
+    paragraph = doc.add_paragraph('Otrzymują:')
+    paragraph.paragraph_format.space_after = Cm(0)
     
     
+    paragraph = doc.add_paragraph(name, style='List Number 3')
+    paragraph.paragraph_format.left_indent = Inches(0.5)
+    paragraph = doc.add_paragraph('WYDZIAŁ FINANSÓW W MIEJSCU', style='List Number 3')
+    paragraph.paragraph_format.left_indent = Inches(0.5)
+    paragraph = doc.add_paragraph('a/a', style='List Number 3')
+    paragraph.paragraph_format.left_indent = Inches(0.5)
     
+    paragraph = doc.add_paragraph('Sprawę prowadzi   Beata Andrzejewska tel. 61 8410 568')
     doc.save('test.docx')
     
 create_docx()
