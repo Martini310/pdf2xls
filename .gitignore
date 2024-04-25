@@ -4,6 +4,7 @@ skany/
 
 .env
 
+*.db
 *.pdf
 *.xlsx
 *.7z
