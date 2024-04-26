@@ -7,7 +7,7 @@ import dotenv
 from openpyxl import Workbook
 from docx import Document
 from docx.shared import Pt, Cm, Inches
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_PARAGRAPH_ALIGNMENT
 from docx.enum.style import WD_STYLE_TYPE
 import pytesseract
 
@@ -269,7 +269,25 @@ def write_to_excel_from_ocr(sentences, excel_file_path):
 # write_to_excel_from_ocr(sentences, 'output_ocr.xlsx')
 
 
+def add_numbered_paragraphs(doc, items, style_name, left_indent=None, space_after=None):
+    """
+    Add numbered paragraphs to the document with specified style and formatting.
+    """
+    for item in items:
+        paragraph = doc.add_paragraph(item, style=style_name)
+        if left_indent is not None:
+            paragraph.paragraph_format.left_indent = left_indent
+        if space_after is not None:
+            paragraph.paragraph_format.space_after = space_after
+
+
 def create_docx():
+    name = 'Martin Brzeziński'
+    pesel = '293793759'
+    marka = 'ford'
+    tr = 'PZ 12345'
+    vin = 'JFKKSAFHYJK98987'
+    
     doc = Document()
 
     # Set custom style for bold centered titles
@@ -309,12 +327,6 @@ def create_docx():
 
     paragraph = doc.add_paragraph('\nDECYZJA NR\n', style=title)
 
-    name = 'Martin Brzeziński'
-    pesel = '293793759'
-    marka = 'ford'
-    tr = 'PZ 12345'
-    vin = 'JFKKSAFHYJK98987'
-
     podstawa_prawna = f"""Na podstawie art. 104 ustawy z dnia 14 czerwca 1960 r. – kodeks postepowania administracyjnego (Dz. U. z 2023 r., poz. 775 t. j.) w związku z art. 140mb ust. 1 oraz art. 73aa ust. 1 pkt 1 ustawy z dnia 20 czerwca 1997 r. – Prawo o ruchu drogowym (Dz. U. z 2023 r., poz. 1047 t. j.) po rozpatrzeniu sprawy Pana/i {name}. (PESEL: {pesel}) będącego właścicielem pojazdu marki {marka}. o numerze rejestracyjnym {tr}, nr nadwozia: {vin}."""
 
     doc.add_paragraph(podstawa_prawna)
@@ -336,9 +348,6 @@ def create_docx():
         "art. 189d wymierzając administracyjną karę pieniężną, organ administracji publicznej bierze pod uwagę:",
     ]
 
-    for uzasadnienie in uzasadnienia:
-        doc.add_paragraph(uzasadnienie)
-
     przepisy = ["wagę i okoliczności naruszenia prawa, w szczególności potrzebę ochrony życia lub zdrowia, ochrony mienia w znacznych rozmiarach lub ochrony ważnego interesu publicznego lub wyjątkowo ważnego interesu strony oraz czas trwania tego naruszenia;",
         "częstotliwość niedopełniania w przeszłości obowiązku albo naruszania zakazu tego samego rodzaju co niedopełnienie obowiązku albo naruszenie zakazu, w następstwie którego ma być nałożona kara;",
         "uprzednie ukaranie za to samo zachowanie za przestępstwo, przestępstwo skarbowe, wykroczenie lub wykroczenie skarbowe;",
@@ -348,79 +357,71 @@ def create_docx():
         "w przypadku osoby fizycznej - warunki osobiste strony, na którą administracyjna kara pieniężna jest nakładana;",
     ]
 
-    for item in przepisy:
-        paragraph = doc.add_paragraph(item)
-        paragraph.style = 'ListNumber'
-        paragraph.paragraph_format.left_indent = Inches(0.5)
-
     przepisy_2 = ["art. 189e w przypadku gdy do naruszenia prawa doszło wskutek działania siły wyższej, strona nie podlega ukaraniu;",
         "art. 189f",
         "1. organ administracji publicznej, w drodze decyzji, odstępuje od nałożenia administracyjnej kary pieniężnej i poprzestaje na pouczeniu, jeżeli:"
         ]
 
-    for przepis in przepisy_2:
-        doc.add_paragraph(przepis)
-
     przepisy_3 = ["waga naruszenia prawa jest znikoma, a strona zaprzestała naruszania prawa lub",
         "za to samo zachowanie prawomocną decyzją na stronę została uprzednio nałożona administracyjna kara pieniężna przez inny uprawniony organ administracji publicznej lub strona została prawomocnie ukarana za wykroczenie lub wykroczenie skarbowe, lub prawomocnie skazana za przestępstwo lub przestępstwo skarbowe i uprzednia kara spełnia cele, dla których miałaby być nałożona administracyjna kara pieniężna.",
     ]
 
-    for item in przepisy_3:
-        paragraph = doc.add_paragraph(item, style='List Number 2')
-        paragraph.paragraph_format.space_after = Cm(0)
-
     przepisy_4 = """2. w przypadkach innych niż wymienione w § 1, jeżeli pozwoli to na spełnienie celów, dla których miałaby być nałożona administracyjna kara pieniężna, organ administracji publicznej, w drodze postanowienia, może wyznaczyć stronie termin do przedstawienia dowodów potwierdzających:"""
-
-    paragraph = doc.add_paragraph(przepisy_4)
 
     przepisy_5 = ["usunięcie naruszenia prawa lub",
         "powiadomienie właściwych podmiotów o stwierdzonym naruszeniu prawa, określając termin i sposób powiadomienia."
         ]
-
-    for item in przepisy_5:
-        paragraph = doc.add_paragraph(item, style='List Number 3')
-        paragraph.paragraph_format.left_indent = Inches(0.5)
-        paragraph.paragraph_format.space_after = Cm(0)
 
     przepisy_6 = ["3. organ administracji publicznej w przypadkach, o których mowa w § 2, odstępuje od nałożenia administracyjnej kary pieniężnej i poprzestaje na pouczeniu, jeżeli strona przedstawiła dowody, potwierdzające wykonanie postanowienia.",
         "W związku z powyższym przywołany przepis art. 140n ust. 6 wyklucza możliwość odstąpienia od nałożenia kary pieniężnej i obniżenia jej wysokości.",
         "W tej sytuacji orzeka się jak w sentencji."
     ]
 
+    pouczenia = [
+        "\tZgodnie z art. 140n ust 5 ustawy Prawo o ruchu drogowym kary pieniężne są wnoszone na rachunek bankowy starostwa w terminie 14 dni od dnia, w którym decyzja o nałożeniu kary pieniężnej stała się ostateczna.",
+        "\tWpłaty należy dokonać na konto numer: 7710 3012 4700 0000 0034 9162 41 w tytule podając nr decyzji KT.5410.7.00049.2024",
+        "\tOd niniejszej decyzji przysługuje odwołanie do Samorządowego Kolegium Odwoławczego w Poznaniu, za pośrednictwem Starosty Poznańskiego, w terminie 14 dni od daty jej doręczenia.",
+        "\tW trakcie biegu terminu od wniesienia odwołania stronie służy także prawo do zrzeczenia się prawa do wniesienia odwołania od decyzji. Z dniem doręczenia organowi oświadczenia o zrzeczeniu się prawa do wniesienia odwołania, decyzja staje się ostateczna i prawomocna.",
+    ]
+
+    for uzasadnienie in uzasadnienia:
+        doc.add_paragraph(uzasadnienie)
+
+    add_numbered_paragraphs(doc, przepisy, 'ListNumber', Inches(0.5))
+
+    for przepis in przepisy_2:
+        doc.add_paragraph(przepis)
+
+    add_numbered_paragraphs(doc, przepisy_3, 'List Number 2', space_after=Cm(0))
+
+    paragraph = doc.add_paragraph(przepisy_4)
+
+    add_numbered_paragraphs(doc, przepisy_5, "List Number 3", Inches(0.5), Cm(0))
+
     for przepis in przepisy_6:
         paragraph = doc.add_paragraph(przepis)
 
     paragraph = doc.add_paragraph('\nPouczenie\n', style=title)
 
-    pouczenia = [
-        "Zgodnie z art. 140n ust 5 ustawy Prawo o ruchu drogowym kary pieniężne są wnoszone na rachunek bankowy starostwa w terminie 14 dni od dnia, w którym decyzja o nałożeniu kary pieniężnej stała się ostateczna.",
-        "Wpłaty należy dokonać na konto numer: 7710 3012 4700 0000 0034 9162 41 w tytule podając nr decyzji KT.5410.7.00049.2024",
-        "Od niniejszej decyzji przysługuje odwołanie do Samorządowego Kolegium Odwoławczego w Poznaniu, za pośrednictwem Starosty Poznańskiego, w terminie 14 dni od daty jej doręczenia.",
-        "W trakcie biegu terminu od wniesienia odwołania stronie służy także prawo do zrzeczenia się prawa do wniesienia odwołania od decyzji. Z dniem doręczenia organowi oświadczenia o zrzeczeniu się prawa do wniesienia odwołania, decyzja staje się ostateczna i prawomocna.",
-    ]
-
     paragraph = doc.add_paragraph(pouczenia[0])
+    paragraph = doc.add_paragraph('\n')
 
-    paragraph = doc.add_paragraph()
-    paragraph.add_run('Wpłaty należy dokonać na konto numer: ')
+    paragraph.add_run('\tWpłaty należy dokonać na konto numer: ')
     paragraph.add_run('7710 3012 4700 0000 0034 9162 41').bold = True
     paragraph.add_run(' w tytule podając nr decyzji ')
     paragraph.add_run('KT.5410.7.00049.2024').bold = True
-
+    paragraph = doc.add_paragraph()
+    
     paragraph = doc.add_paragraph(pouczenia[2])
+    paragraph = doc.add_paragraph()
     paragraph = doc.add_paragraph(pouczenia[3])
-
     paragraph = doc.add_paragraph('\n' * 11)
+    
     paragraph = doc.add_paragraph('Otrzymują:')
 
-    paragraph = doc.add_paragraph(name, style='List Number 3')
-    paragraph.paragraph_format.left_indent = Inches(0.5)
-    paragraph = doc.add_paragraph('WYDZIAŁ FINANSÓW W MIEJSCU', style='List Number 3')
-    paragraph.paragraph_format.left_indent = Inches(0.5)
-    paragraph = doc.add_paragraph('a/a', style='List Number 3')
-    paragraph.paragraph_format.left_indent = Inches(0.5)
+    add_numbered_paragraphs(doc, [name, 'WYDZIAŁ FINANSÓW W MIEJSCU', 'a/a'], 'List Number 3', Inches(0.5))
 
-    paragraph = doc.add_paragraph('Sprawę prowadzi   Beata Andrzejewska tel. 61 8410 568')
+    paragraph = doc.add_paragraph('Sprawę prowadzi:   Beata Andrzejewska tel. 61 8410 568')
     doc.save('test.docx')
 
 create_docx()
