@@ -1,6 +1,6 @@
 import os
 import re
-from typing import List, Dict
+from typing import List, Dict, Pattern
 from PIL import Image
 import pdf2image
 import dotenv
@@ -22,6 +22,29 @@ poppler_path=os.environ.get('POPPLER_PATH')
 pdf_files = [os.path.join("./skany", f) for f in os.listdir('./skany') if os.path.isfile(os.path.join("./skany", f)) and f.endswith('.pdf')]
 # images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in list(reversed(pdf_files))]
 
+
+class PDFHandler:
+    def __init__(self, path: str) -> None:
+        self.path: str = path
+
+    def create_images(self, file: str) -> List[Image.Image]:
+        """
+        Convert PDF file into image.
+        """
+        image: List[Image.Image] = pdf2image.convert_from_path(file, poppler_path=poppler_path)
+
+        return image
+    
+    def perform_ocr(self, image: List[Image.Image]) -> str:
+        """
+        Perform OCR (Optical Character Recognition) on an image.
+        """
+        extracted_text = []
+        for page in image:
+            text = pytesseract.image_to_string(page, config=CUSTOM_CONFIG)
+            extracted_text.append(text)
+
+        return '\n'.join(extracted_text)
 
 
 class ReadPDF:
@@ -58,6 +81,93 @@ class ReadPDF:
                 extracted_text.append(text)
             text.append('\n'.join(extracted_text))
         return text
+
+
+    def find_pattern(self, text: str, pattern: Pattern[str]) -> str:
+        matches = re.findall(pattern, text)
+        if not matches:
+            return 'n/d'
+        result = matches[0].replace('\n', ' ').srip()
+        return result
+    
+    def find_patterns(self, text: str) -> Dict[str, str]:
+        """
+        Find specific patterns in OCR text and extract relevant information.
+        """
+        output: Dict[str, str] = {}
+        kt = ''
+
+        try:
+            tmp = kt if kt else '1'
+            kt_pattern = r'(?<=KT.5410.[0-9].)([0-9]+)'
+            kt = re.findall(kt_pattern, text)
+            if not kt:
+                kt = str(int(tmp) + 1)
+            else:
+                kt = kt[0]
+
+            # print(text)
+            name_pattern = r'(?<=na rzecz )(([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*)+)'
+            client_name = re.search(name_pattern, text)
+            # print(name)
+            client_name = client_name[0].replace('\n', ' ').strip()
+
+            vin_pattern = r'(?<=VIN:)[\s —-]*([A-Z0-9—-]*)'
+            vin = re.findall(vin_pattern, text)
+            vin = 'błąd odczytu' if not vin else vin[0]
+
+            art_pattern = r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)'
+            art = re.search(art_pattern, text)
+            art = art[0].replace('\n', ' ')
+
+            if '73aa ust. 1 pkt 3' in art:
+                tr = ''
+            else:
+                tr_pattern = r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b'
+                tr = re.findall(tr_pattern, text)
+                print(tr)
+                tr = tr[0].replace('\n', ' ')
+
+            czynnosc = ''
+            if '73aa ust. 1 pkt 3' in art:
+                czynnosc = 'SPROWADZONY'
+            elif '73aa ust. 1 pkt 1' in art:
+                czynnosc = 'NABYCIE'
+            elif '78 ust. 2 pkt 1' in art:
+                czynnosc = 'ZBYCIE'
+
+            address_pattern = r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)'
+            address = re.search(address_pattern, text)
+            address = 'błąd odczytu' if not address else address[0]
+
+            date_pattern = r'(?<=Poznań, dnia ).+(?=r)'
+            date = re.search(date_pattern, text)
+            date = date[0].replace('—', '.').replace('-', '.')
+
+            brand_pattern = r'(?<=marki\s)[\w\s\\/-]+(?=o)'
+            brand = re.findall(brand_pattern, text)
+            brand = brand[0].strip()
+
+            output[kt] = {
+                'name': client_name,
+                'vin': vin[0],
+                'tr': tr,
+                'date': date,
+                'art': art,
+                'czynnosc': czynnosc
+            }
+
+        except IndexError as e:
+            print(text)
+            print(kt, 'error', e)
+            print(kt, client_name, vin, tr, art, date, brand, address)
+            print('---' * 50)
+        except TypeError as e:
+            print(kt, 'type error', e)
+            print(text)
+
+        return output
+
 
     def find_patterns(self, ocr_text: List[str]) -> Dict[str, Dict[str, str]]:
         """
