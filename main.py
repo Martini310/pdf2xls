@@ -24,8 +24,21 @@ pdf_files = [os.path.join("./skany", f) for f in os.listdir('./skany') if os.pat
 
 
 class PDFHandler:
+    patterns: Dict[str, Pattern[str]] = {
+        'kt': r'(?<=KT.5410.[0-9].)([0-9]+)',
+        'name': r'(?<=na rzecz )([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+(?:\s+[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+)*(?:\s+[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+))', # r'(?<=na rzecz )(([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*)+)',
+        'vin': r'(?<=VIN:)[\s —-]*([A-Z0-9—-]*)',
+        'basis': r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)',
+        'tr': r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b',
+        'address': r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)',
+        'date': r'(?<=Poznań, dnia ).+(?=r)',
+        'brand': r'(?<=marki\s)[\w\s\\/-]+(?=o)',
+    }
+
     def __init__(self, path: str) -> None:
         self.path: str = path
+        self.text = self.perform_ocr(self.create_images(self.path))
+        self.results = {key: self.find_pattern(self.text, pattern) for key, pattern in self.patterns.items()}
 
     def create_images(self, file: str) -> List[Image.Image]:
         """
@@ -46,6 +59,25 @@ class PDFHandler:
 
         return '\n'.join(extracted_text)
 
+    def find_pattern(self, text: str, pattern: Pattern[str]) -> str:
+        try:
+            matches: List[str] = re.findall(pattern, text)
+            if not matches:
+                return 'n/d'
+            result = matches[0]
+            return result
+        except IndexError as e:
+            print(text)
+            print('error', e)
+            print('---' * 50)
+            return 'błąd'
+        except TypeError as e:
+            print('type error', e)
+            print(text)
+            return 'błąd'
+
+test = PDFHandler('./d.pdf')
+print(test.results)
 
 class ReadPDF:
     def __init__(self, path: str, reverse: bool = False) -> None:
@@ -82,92 +114,12 @@ class ReadPDF:
             text.append('\n'.join(extracted_text))
         return text
 
-
     def find_pattern(self, text: str, pattern: Pattern[str]) -> str:
         matches = re.findall(pattern, text)
         if not matches:
             return 'n/d'
-        result = matches[0].replace('\n', ' ').srip()
+        result = matches[0].replace('\n', ' ').strip()
         return result
-    
-    def find_patterns(self, text: str) -> Dict[str, str]:
-        """
-        Find specific patterns in OCR text and extract relevant information.
-        """
-        output: Dict[str, str] = {}
-        kt = ''
-
-        try:
-            tmp = kt if kt else '1'
-            kt_pattern = r'(?<=KT.5410.[0-9].)([0-9]+)'
-            kt = re.findall(kt_pattern, text)
-            if not kt:
-                kt = str(int(tmp) + 1)
-            else:
-                kt = kt[0]
-
-            # print(text)
-            name_pattern = r'(?<=na rzecz )(([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*)+)'
-            client_name = re.search(name_pattern, text)
-            # print(name)
-            client_name = client_name[0].replace('\n', ' ').strip()
-
-            vin_pattern = r'(?<=VIN:)[\s —-]*([A-Z0-9—-]*)'
-            vin = re.findall(vin_pattern, text)
-            vin = 'błąd odczytu' if not vin else vin[0]
-
-            art_pattern = r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)'
-            art = re.search(art_pattern, text)
-            art = art[0].replace('\n', ' ')
-
-            if '73aa ust. 1 pkt 3' in art:
-                tr = ''
-            else:
-                tr_pattern = r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b'
-                tr = re.findall(tr_pattern, text)
-                print(tr)
-                tr = tr[0].replace('\n', ' ')
-
-            czynnosc = ''
-            if '73aa ust. 1 pkt 3' in art:
-                czynnosc = 'SPROWADZONY'
-            elif '73aa ust. 1 pkt 1' in art:
-                czynnosc = 'NABYCIE'
-            elif '78 ust. 2 pkt 1' in art:
-                czynnosc = 'ZBYCIE'
-
-            address_pattern = r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)'
-            address = re.search(address_pattern, text)
-            address = 'błąd odczytu' if not address else address[0]
-
-            date_pattern = r'(?<=Poznań, dnia ).+(?=r)'
-            date = re.search(date_pattern, text)
-            date = date[0].replace('—', '.').replace('-', '.')
-
-            brand_pattern = r'(?<=marki\s)[\w\s\\/-]+(?=o)'
-            brand = re.findall(brand_pattern, text)
-            brand = brand[0].strip()
-
-            output[kt] = {
-                'name': client_name,
-                'vin': vin[0],
-                'tr': tr,
-                'date': date,
-                'art': art,
-                'czynnosc': czynnosc
-            }
-
-        except IndexError as e:
-            print(text)
-            print(kt, 'error', e)
-            print(kt, client_name, vin, tr, art, date, brand, address)
-            print('---' * 50)
-        except TypeError as e:
-            print(kt, 'type error', e)
-            print(text)
-
-        return output
-
 
     def find_patterns(self, ocr_text: List[str]) -> Dict[str, Dict[str, str]]:
         """
@@ -533,4 +485,4 @@ def create_docx():
     paragraph = doc.add_paragraph('Sprawę prowadzi   Beata Andrzejewska tel. 61 8410 568')
     doc.save('test.docx')
 
-create_docx()
+# create_docx()
