@@ -1,6 +1,6 @@
 import os
 import re
-from typing import List, Dict
+from typing import List, Dict, Pattern
 from PIL import Image
 import pdf2image
 import dotenv
@@ -23,6 +23,61 @@ pdf_files = [os.path.join("./skany", f) for f in os.listdir('./skany') if os.pat
 # images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in list(reversed(pdf_files))]
 
 
+class PDFHandler:
+    patterns: Dict[str, Pattern[str]] = {
+        'kt': r'(?<=KT.5410.[0-9].)([0-9]+)',
+        'name': r'(?<=na rzecz )([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+(?:\s+[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+)*(?:\s+[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+))', # r'(?<=na rzecz )(([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*)+)',
+        'vin': r'(?<=VIN:)[\s —-]*([A-Z0-9—-]*)',
+        'basis': r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)',
+        'tr': r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b',
+        'address': r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)',
+        'date': r'(?<=Poznań, dnia ).+(?=r)',
+        'brand': r'(?<=marki\s)[\w\s\\/-]+(?=o)',
+    }
+
+    def __init__(self, path: str) -> None:
+        self.path: str = path
+        self.text = self.perform_ocr(self.create_images(self.path))
+        self.results = {key: self.find_pattern(self.text, pattern) for key, pattern in self.patterns.items()}
+
+    def create_images(self, file: str) -> List[Image.Image]:
+        """
+        Convert PDF file into image.
+        """
+        image: List[Image.Image] = pdf2image.convert_from_path(file, poppler_path=poppler_path)
+
+        return image
+    
+    def perform_ocr(self, image: List[Image.Image]) -> str:
+        """
+        Perform OCR (Optical Character Recognition) on an image.
+        """
+        extracted_text = []
+        for page in image:
+            text = pytesseract.image_to_string(page, config=CUSTOM_CONFIG)
+            extracted_text.append(text)
+
+        return '\n'.join(extracted_text)
+
+    def find_pattern(self, text: str, pattern: Pattern[str]) -> str:
+        try:
+            matches: List[str] = re.findall(pattern, text)
+            if not matches:
+                return 'n/d'
+            result = matches[0]
+            return result
+        except IndexError as e:
+            print(text)
+            print('error', e)
+            print('---' * 50)
+            return 'błąd'
+        except TypeError as e:
+            print('type error', e)
+            print(text)
+            return 'błąd'
+
+test = PDFHandler('./d.pdf')
+print(test.results)
 
 class ReadPDF:
     def __init__(self, path: str, reverse: bool = False) -> None:
@@ -58,6 +113,13 @@ class ReadPDF:
                 extracted_text.append(text)
             text.append('\n'.join(extracted_text))
         return text
+
+    def find_pattern(self, text: str, pattern: Pattern[str]) -> str:
+        matches = re.findall(pattern, text)
+        if not matches:
+            return 'n/d'
+        result = matches[0].replace('\n', ' ').strip()
+        return result
 
     def find_patterns(self, ocr_text: List[str]) -> Dict[str, Dict[str, str]]:
         """
@@ -424,4 +486,4 @@ def create_docx():
     paragraph = doc.add_paragraph('Sprawę prowadzi:   Beata Andrzejewska tel. 61 8410 568')
     doc.save('test.docx')
 
-create_docx()
+# create_docx()
