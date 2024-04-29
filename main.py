@@ -7,7 +7,7 @@ import dotenv
 from openpyxl import Workbook
 from docx import Document
 from docx.shared import Pt, Cm, Inches
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_PARAGRAPH_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.enum.style import WD_STYLE_TYPE
 import pytesseract
 
@@ -38,7 +38,8 @@ class PDFHandler:
     def __init__(self, path: str) -> None:
         self.path: str = path
         self.text = self.perform_ocr(self.create_images(self.path))
-        self.results = {key: self.find_pattern(self.text, pattern) for key, pattern in self.patterns.items()}
+        self.results = self.extract_text(self.text, self.patterns)
+        self.przypisz_czynnosc()
 
     def create_images(self, file: str) -> List[Image.Image]:
         """
@@ -47,7 +48,7 @@ class PDFHandler:
         image: List[Image.Image] = pdf2image.convert_from_path(file, poppler_path=poppler_path)
 
         return image
-    
+
     def perform_ocr(self, image: List[Image.Image]) -> str:
         """
         Perform OCR (Optical Character Recognition) on an image.
@@ -60,6 +61,9 @@ class PDFHandler:
         return '\n'.join(extracted_text)
 
     def find_pattern(self, text: str, pattern: Pattern[str]) -> str:
+        """
+        Find and return provided pattern in a given text
+        """
         try:
             matches: List[str] = re.findall(pattern, text)
             if not matches:
@@ -76,8 +80,30 @@ class PDFHandler:
             print(text)
             return 'błąd'
 
-test = PDFHandler('./d.pdf')
-print(test.results)
+    def extract_text(self, text: str, patterns: Dict[str, Pattern[str]]) -> Dict[str, str]:
+        """
+        Return a dict with extracted data from given text based on patterns provided in dict
+        """
+        data: Dict[str, str] = {}
+        for key, pattern in patterns.items():
+            extracted_text = self.find_pattern(text, pattern)
+            extracted_text = extracted_text.strip().replace('\n', ' ')
+            data[key] = extracted_text
+        return data
+    
+    def przypisz_czynnosc(self) -> None:
+        czynnosc = 'n/d'
+        if '73aa ust. 1 pkt 3' in self.results['basis']:
+            czynnosc = 'SPROWADZONY'
+        elif '73aa ust. 1 pkt 1' in self.results['basis']:
+            czynnosc = 'NABYCIE'
+        elif '78 ust. 2 pkt 1' in self.results['basis']:
+            czynnosc = 'ZBYCIE'
+        self.results['czynność'] = czynnosc
+
+    def __str__(self) -> str:
+        return '\n'.join(f'{key} - {value}' for key, value in self.results.items()) + '\n' + '-' * 50
+
 
 class ReadPDF:
     def __init__(self, path: str, reverse: bool = False) -> None:
@@ -88,115 +114,8 @@ class ReadPDF:
             for f in os.listdir(self.path)
             if os.path.isfile(os.path.join(self.path, f)) and f.endswith('.pdf')
         ]
-
-    def create_images(self, files: List[str]) -> List[List[Image.Image]]:
-        """
-        Convert PDF files to a list of images.
-        """
-        images: List[List[Image.Image]] = [
-            pdf2image.convert_from_path(f, poppler_path=poppler_path)
-            for f in files
-        ]
-        if self.reverse:
-            images.reverse()
-        return images
-
-    def perform_ocr(self, images: List[List[Image.Image]]) -> List[str]:
-        """
-        Perform OCR (Optical Character Recognition) on a list of images.
-        """
-        text: List[str] = []
-        for image in images:
-            extracted_text = []
-            for page in image:
-                text = pytesseract.image_to_string(page, config=CUSTOM_CONFIG)
-                extracted_text.append(text)
-            text.append('\n'.join(extracted_text))
-        return text
-
-    def find_pattern(self, text: str, pattern: Pattern[str]) -> str:
-        matches = re.findall(pattern, text)
-        if not matches:
-            return 'n/d'
-        result = matches[0].replace('\n', ' ').strip()
-        return result
-
-    def find_patterns(self, ocr_text: List[str]) -> Dict[str, Dict[str, str]]:
-        """
-        Find specific patterns in OCR text and extract relevant information.
-        """
-        output: Dict[str, Dict[str, str]] = {}
-        kt = ''
-        for text in ocr_text:
-            try:
-                tmp = kt if kt else '1'
-                kt_pattern = r'(?<=KT.5410.[0-9].)([0-9]+)'
-                kt = re.findall(kt_pattern, text)
-                if not kt:
-                    kt = str(int(tmp) + 1)
-                else:
-                    kt = kt[0]
-
-                # print(text)
-                name_pattern = r'(?<=na rzecz )(([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*)+)'
-                client_name = re.search(name_pattern, text)
-                # print(name)
-                client_name = client_name[0].replace('\n', ' ').strip()
-
-                vin_pattern = r'(?<=VIN:)[\s —-]*([A-Z0-9—-]*)'
-                vin = re.findall(vin_pattern, text)
-                vin = 'błąd odczytu' if not vin else vin[0]
-
-                art_pattern = r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)'
-                art = re.search(art_pattern, text)
-                art = art[0].replace('\n', ' ')
-
-                if '73aa ust. 1 pkt 3' in art:
-                    tr = ''
-                else:
-                    tr_pattern = r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b'
-                    tr = re.findall(tr_pattern, text)
-                    print(tr)
-                    tr = tr[0].replace('\n', ' ')
-
-                czynnosc = ''
-                if '73aa ust. 1 pkt 3' in art:
-                    czynnosc = 'SPROWADZONY'
-                elif '73aa ust. 1 pkt 1' in art:
-                    czynnosc = 'NABYCIE'
-                elif '78 ust. 2 pkt 1' in art:
-                    czynnosc = 'ZBYCIE'
-
-                address_pattern = r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)'
-                address = re.search(address_pattern, text)
-                address = 'błąd odczytu' if not address else address[0]
-
-                date_pattern = r'(?<=Poznań, dnia ).+(?=r)'
-                date = re.search(date_pattern, text)
-                date = date[0].replace('—', '.').replace('-', '.')
-
-                brand_pattern = r'(?<=marki\s)[\w\s\\/-]+(?=o)'
-                brand = re.findall(brand_pattern, text)
-                brand = brand[0].strip()
-
-                output[kt] = {
-                    'name': client_name,
-                    'vin': vin[0],
-                    'tr': tr,
-                    'date': date,
-                    'art': art,
-                    'czynnosc': czynnosc
-                }
-
-            except IndexError as e:
-                print(text)
-                print(kt, 'error', e)
-                print(kt, client_name, vin, tr, art, date, brand, address)
-                print('---' * 50)
-            except TypeError as e:
-                print(kt, 'type error', e)
-                print(text)
-        return output
+        for file in self.files[60:75]:
+            print(PDFHandler(file))
 
     def write_to_excel(self, data: Dict[str, Dict[str, str]], excel_file_path: str) -> None:
         """
@@ -221,112 +140,6 @@ class ReadPDF:
             sheet[f'L{idx}'] = data[kt]['art']
         workbook.save(excel_file_path)
 
-
-def perform_ocr(images):
-    ocr_text = []
-    for image in images:
-        extracted_text = []
-        for page in image:
-            text = pytesseract.image_to_string(page, config=CUSTOM_CONFIG)
-            extracted_text.append(text)
-        ocr_text.append('\n'.join(extracted_text))
-    return ocr_text
-
-# ocr_text = perform_ocr(images)
-# print(ocr_text)
-
-def find_patterns(ocr_text):
-    output = {}
-    kt = ''
-    for text in ocr_text:
-        try:
-            tmp = kt if kt else '0'
-            kt_pattern = r'(?<=KT.5410.[0-9].)([0-9]+)'
-            kt = re.findall(kt_pattern, text)
-            if not kt:
-                kt = str(int(tmp) + 1)
-            else:
-                kt = kt[0]
-            
-            # print(text)
-            name_pattern = r'(?<=na rzecz )(([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*)+)'
-            name = re.search(name_pattern, text)
-            # print(name)
-            name = name[0].replace('\n', ' ').strip()
-
-            vin_pattern = r'(?<=VIN:)[\s —-]*([A-Z0-9—-]*)'
-            vin = re.findall(vin_pattern, text)
-            vin = 'błąd odczytu' if not vin else vin
-
-            art_pattern = r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)'
-            art = re.search(art_pattern, text)
-            art = art[0].replace('\n', ' ')
-
-            if '73aa ust. 1 pkt 3' in art:
-                tr = ''
-            else:
-                tr_pattern = r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b'
-                tr = re.findall(tr_pattern, text)
-                print(tr)
-                tr = tr[0].replace('\n', ' ')
-
-            czynnosc = ''
-            if '73aa ust. 1 pkt 3' in art:
-                czynnosc = 'SPROWADZONY'
-            elif '73aa ust. 1 pkt 1' in art:
-                czynnosc = 'NABYCIE'
-            elif '78 ust. 2 pkt 1' in art:
-                czynnosc = 'ZBYCIE'
-
-            address_pattern = r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)'
-            address = re.search(address_pattern, text)
-            address = 'błąd odczytu' if not address else address[0]
-
-            date_pattern = r'(?<=Poznań, dnia ).+(?=r)'
-            date = re.search(date_pattern, text)
-            date = date[0].replace('—', '.').replace('-', '.')
-            
-            brand_pattern = r'(?<=marki\s)[\w\s\\/-]+(?=o)'
-            brand = re.findall(brand_pattern, text)
-            brand = brand[0].strip()
-            
-            # print(kt, name, vin[0], tr, art[0], address[0], date[0])
-            output[kt] = {'name': name, 'vin': vin[0], 'tr': tr, 'date': date, 'art': art, 'czynnosc': czynnosc}
-        except IndexError as e:
-            print(text)
-            print(kt, 'error', e)
-            print(kt, name, vin, tr, art, date, brand, address)
-            print('---' * 50)
-        except TypeError as e:
-            print(kt, 'type error', e)
-            print(text)
-    return output
-
-
-# sentences = find_patterns(ocr_text)
-# print(sentences)
-
-
-def write_to_excel_from_ocr(sentences, excel_file_path):
-    workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = 'Extracted Sentences (OCR)'
-
-    for idx, key in enumerate(sentences, start=1):
-        sheet[f'A{idx}'] = key
-        sheet[f'B{idx}'] = sentences[key]['tr']
-        sheet[f'C{idx}'] = sentences[key]['vin']
-        sheet[f'D{idx}'] = sentences[key]['name']
-        sheet[f'E{idx}'] = ''
-        sheet[f'F{idx}'] = ''
-        sheet[f'G{idx}'] = sentences[key]['date']
-        sheet[f'H{idx}'] = ''
-        sheet[f'I{idx}'] = ''
-        sheet[f'J{idx}'] = ''
-        sheet[f'K{idx}'] = sentences[key]['czynnosc']
-        sheet[f'L{idx}'] = sentences[key]['art']
-    workbook.save(excel_file_path)
-
 # Usage:
 # write_to_excel_from_ocr(sentences, 'output_ocr.xlsx')
 
@@ -342,14 +155,13 @@ def add_numbered_paragraphs(doc, items, style_name, left_indent=None, space_afte
         if space_after is not None:
             paragraph.paragraph_format.space_after = space_after
 
-
 def create_docx():
     name = 'Martin Brzeziński'
     pesel = '293793759'
     marka = 'ford'
     tr = 'PZ 12345'
     vin = 'JFKKSAFHYJK98987'
-    
+
     doc = Document()
 
     # Set custom style for bold centered titles
@@ -381,7 +193,6 @@ def create_docx():
     section.left_margin = Cm(2.5)
     section.right_margin = Cm(2.5)
 
-
     doc.add_paragraph('Poznań dnia ').paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
     header = 'Starosta Poznański\nul. Jackowskiego 18\n60-509 Poznań'
@@ -400,7 +211,7 @@ def create_docx():
     paragraph = doc.add_paragraph(kara)
 
     paragraph = doc.add_paragraph('\nUzasadnienie\n', style=title)
-    
+
     uzasadnienia = ["\tTutejszy organ powziął informację z urzędu o tym, że strona w postępowaniu nie złożyła w terminie wniosku o rejestrację pojazdu nabytego na terytorium Rzeczpospolitej Polskiej. Z treści umowy/faktury nr ………….. pomiędzy ………………………. (sprzedającym) a …………………………. (kupującym) wynika, że strona nabyła pojazd w dniu ………………………….. r.",
         "\tZgodnie z art. 73aa ust. 1 pkt 1 ustawy Prawo o ruchu drogowym właściciel pojazdu jest obowiązany złożyć wniosek o jego rejestrację w terminie nieprzekraczającym 30 dni od dnia jego nabycia na terytorium Rzeczpospolitej Polskiej.",
         "\tW związku z niedopełnieniem wyrażonego w ustawie – Prawo o ruchu drogowym obowiązku, tutejszy organ wszczął z urzędu w dniu ………………………. r. postępowanie administracyjne w przedmiocie wyżej wskazanego naruszenia o czym pisemnie zawiadomił stronę. Skutecznie doręczone zawiadomienie o wszczęciu postepowania umożliwiło stronie czynny udział w toczącym się postępowaniu i wypowiedzenie się w przedmiotowej sprawie. Strona nie złożyła pisemnego wyjaśnienia.",
@@ -481,9 +292,17 @@ def create_docx():
     
     paragraph = doc.add_paragraph('Otrzymują:')
 
-    add_numbered_paragraphs(doc, [name, 'WYDZIAŁ FINANSÓW W MIEJSCU', 'a/a'], 'List Number 3', Inches(0.5))
-
-    paragraph = doc.add_paragraph('Sprawę prowadzi:   Beata Andrzejewska tel. 61 8410 568')
+    # add_numbered_paragraphs(doc, [name, 'WYDZIAŁ FINANSÓW W MIEJSCU', 'a/a'], 'MyNumberedList', Inches(0.5))
+    for idx, v in enumerate([name, 'WYDZIAŁ FINANSÓW W MIEJSCU', 'a/a'], start=1):
+        doc.add_paragraph(str(idx) + '.   ' + v)
+        
+    paragraph = doc.add_paragraph('\nSprawę prowadzi:   Beata Andrzejewska tel. 61 8410 568')
+    
     doc.save('test.docx')
 
-# create_docx()
+
+if __name__ == '__main__':
+    # test = PDFHandler('./d.pdf')
+    # print(test.results)
+    # create_docx()
+    ReadPDF('./skany')
