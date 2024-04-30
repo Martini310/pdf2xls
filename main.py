@@ -109,15 +109,19 @@ class ReadPDF:
     def __init__(self, path: str, reverse: bool = False) -> None:
         self.path: str = path
         self.reverse: bool = reverse
-        self.files: List[str] = [
+        self.files_paths: List[str] = [
             os.path.join(self.path, f)
             for f in os.listdir(self.path)
             if os.path.isfile(os.path.join(self.path, f)) and f.endswith('.pdf')
         ]
-        for file in self.files[60:75]:
-            print(PDFHandler(file))
 
-    def write_to_excel(self, data: Dict[str, Dict[str, str]], excel_file_path: str) -> None:
+    def read_pdf(self) -> None: 
+        handlers = []
+        for file_path in self.files_paths[60:75]:
+            handlers.append(PDFHandler(file_path))
+        self.handlers: List[PDFHandler] = handlers
+
+    def write_to_excel(self, data: List[PDFHandler], excel_file_path: str) -> None:
         """
         Write data extracted from OCR to an Excel file.
         """
@@ -125,19 +129,20 @@ class ReadPDF:
         sheet = workbook.active
         sheet.title = 'Extracted data (OCR)'
 
-        for idx, kt in enumerate(data, start=1):
-            sheet[f'A{idx}'] = kt
-            sheet[f'B{idx}'] = data[kt]['tr']
-            sheet[f'C{idx}'] = data[kt]['vin']
-            sheet[f'D{idx}'] = data[kt]['name']
+        for idx, handler in enumerate(data, start=1):
+            kt = handler.results
+            sheet[f'A{idx}'] = kt['kt']
+            sheet[f'B{idx}'] = kt['tr']
+            sheet[f'C{idx}'] = kt['vin']
+            sheet[f'D{idx}'] = kt['name']
             sheet[f'E{idx}'] = ''
             sheet[f'F{idx}'] = ''
-            sheet[f'G{idx}'] = data[kt]['date']
+            sheet[f'G{idx}'] = kt['date']
             sheet[f'H{idx}'] = ''
             sheet[f'I{idx}'] = ''
             sheet[f'J{idx}'] = ''
-            sheet[f'K{idx}'] = data[kt]['czynnosc']
-            sheet[f'L{idx}'] = data[kt]['art']
+            sheet[f'K{idx}'] = kt['czynność']
+            sheet[f'L{idx}'] = kt['basis']
         workbook.save(excel_file_path)
 
 # Usage:
@@ -305,4 +310,7 @@ if __name__ == '__main__':
     # test = PDFHandler('./d.pdf')
     # print(test.results)
     # create_docx()
-    ReadPDF('./skany')
+    a = ReadPDF('./skany')
+    a.read_pdf()
+    a.write_to_excel(a.handlers, 'output_ocr.xlsx')
+
