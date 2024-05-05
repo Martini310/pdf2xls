@@ -10,7 +10,8 @@ from docx.shared import Pt, Cm, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.enum.style import WD_STYLE_TYPE
 import pytesseract
-
+from datetime import date
+import json
 
 dotenv.load_dotenv()
 
@@ -33,6 +34,8 @@ class PDFHandler:
         'address': r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)',
         'date': r'(?<=Poznań, dnia ).+(?=r)',
         'brand': r'(?<=marki\s)[\w\s\\/-]+(?=o)',
+        'pesel': r'[0-9]{9,11}',
+        'purchase_date': r'(?<=z dnia )[0-9-.]+(?=r.)',
     }
 
     def __init__(self, path: str) -> None:
@@ -101,6 +104,102 @@ class PDFHandler:
             czynnosc = 'ZBYCIE'
         self.results['czynność'] = czynnosc
 
+    def create_docx(self) -> None:
+        data = self.results
+
+        with open('docx_source_text.json', 'r', encoding='utf-8') as file:
+            source = json.load(file)
+
+        doc = Document()
+
+        # Set custom style for bold centered titles
+        styles = doc.styles
+        title = styles.add_style('Tytuł', WD_STYLE_TYPE.PARAGRAPH)
+        title.base_style = styles['Normal']
+        title.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        font = doc.styles['Tytuł'].font
+        font.bold = True
+
+        # Customize base style
+        doc.styles['Normal'].paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        doc.styles['Normal'].paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        doc.styles['Normal'].paragraph_format.space_after = Cm(0)
+
+        font = doc.styles['Normal'].font
+        font.name = 'Calibri'
+        font.size = Pt(10)
+
+        # Customize page and margins sizes
+        section = doc.sections[0]
+
+        section.page_width = Inches(8.27)   # Equivalent to 210 mm
+        section.page_height = Inches(11.69)  # Equivalent to 297 mm
+
+        section.top_margin = Cm(2.5)
+        section.bottom_margin = Cm(2.5)
+        section.left_margin = Cm(2.5)
+        section.right_margin = Cm(2.5)
+
+        doc.add_paragraph(f'Poznań dnia {date.today()}').paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+        header = 'Starosta Poznański\nul. Jackowskiego 18\n60-509 Poznań'
+        doc.add_paragraph(header).paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+        paragraph = doc.add_paragraph(f"\nDECYZJA NR KT.5410.7.{data['kt']}.2024\n", style=title)
+
+        doc.add_paragraph(source['podstawa_prawna'].format(data['name'], data['pesel'], data['brand'], data['tr'], data['vin']))
+
+        paragraph = doc.add_paragraph('\nStarosta\n', style=title)
+        paragraph = doc.add_paragraph(source['kara'])
+        paragraph = doc.add_paragraph('\nUzasadnienie\n', style=title)
+
+        doc.add_paragraph(source['uzasadnienia'][0].format(data['name'], data['purchase_date']))
+        doc.add_paragraph(source['uzasadnienia'][1])
+        doc.add_paragraph(source['uzasadnienia'][2].format(data['date']))
+        for uzasadnienie in source['uzasadnienia'][3:]:
+            doc.add_paragraph(uzasadnienie)
+
+        add_numbered_paragraphs(doc, source['przepisy'], 'ListNumber', Inches(0.5))
+
+        for przepis in source['przepisy_2']:
+            doc.add_paragraph(przepis)
+
+        add_numbered_paragraphs(doc, source['przepisy_3'], 'List Number 2', space_after=Cm(0))
+        paragraph = doc.add_paragraph(source['przepisy_4'])
+        # add_numbered_paragraphs(doc, source['przepisy_5'], "List Number 3", Inches(0.5), Cm(0))
+        for przepis in source['przepisy_5']:
+            paragraph = doc.add_paragraph(przepis)
+            paragraph.paragraph_format.left_indent = Inches(0.25)
+
+        for przepis in source['przepisy_6']:
+            paragraph = doc.add_paragraph(przepis)
+
+        paragraph = doc.add_paragraph('\nPouczenie\n', style=title)
+        paragraph = doc.add_paragraph(source['pouczenia'][0])
+        paragraph = doc.add_paragraph('\n')
+
+        paragraph.add_run('\tWpłaty należy dokonać na konto numer: ')
+        paragraph.add_run('7710 3012 4700 0000 0034 9162 41').bold = True
+        paragraph.add_run(' w tytule podając nr decyzji ')
+        paragraph.add_run(f"KT.5410.7.{data['kt']}.2024").bold = True
+        paragraph = doc.add_paragraph()
+        
+        paragraph = doc.add_paragraph(source['pouczenia'][2])
+        paragraph = doc.add_paragraph()
+        paragraph = doc.add_paragraph(source['pouczenia'][3])
+        paragraph = doc.add_paragraph('\n' * 11)
+        
+        paragraph = doc.add_paragraph('Otrzymują:')
+
+        add_numbered_paragraphs(doc, [data['address'], 'WYDZIAŁ FINANSÓW W MIEJSCU', 'a/a'], 'List Number 3', Inches(0.5))
+        # for idx, v in enumerate([data['address'], 'WYDZIAŁ FINANSÓW W MIEJSCU', 'a/a'], start=1):
+        #     doc.add_paragraph(str(idx) + '.   ' + v)
+            
+        paragraph = doc.add_paragraph('\nSprawę prowadzi:   Beata Andrzejewska tel. 61 8410 568')
+        
+        doc.save(f"KT.5410.7.{data['kt']}.2024.docx")
+
     def __str__(self) -> str:
         return '\n'.join(f'{key} - {value}' for key, value in self.results.items()) + '\n' + '-' * 50
 
@@ -117,7 +216,7 @@ class ReadPDF:
 
     def read_pdf(self) -> None: 
         handlers = []
-        for file_path in self.files_paths[60:75]:
+        for file_path in self.files_paths[20:25]:
             handlers.append(PDFHandler(file_path))
         self.handlers: List[PDFHandler] = handlers
 
@@ -307,10 +406,14 @@ def create_docx():
 
 
 if __name__ == '__main__':
-    # test = PDFHandler('./d.pdf')
-    # print(test.results)
-    # create_docx()
-    a = ReadPDF('./skany')
-    a.read_pdf()
-    a.write_to_excel(a.handlers, 'output_ocr.xlsx')
+    test = PDFHandler('./d.pdf')
+    print(test)
+    # print(test.text)
+    test.create_docx()
+
+    # a = ReadPDF('./skany')
+    # a.read_pdf()
+    # a.write_to_excel(a.handlers, 'output_ocr.xlsx')
+    # for pdf in a.handlers:
+    #     pdf.create_docx()
 
