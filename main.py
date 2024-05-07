@@ -43,6 +43,7 @@ class PDFHandler:
         self.text = self.perform_ocr(self.create_images(self.path))
         self.results = self.extract_text(self.text, self.patterns)
         self.przypisz_czynnosc()
+        self.kt_formatter()
 
     def create_images(self, file: str) -> List[Image.Image]:
         """
@@ -70,7 +71,7 @@ class PDFHandler:
         try:
             matches: List[str] = re.findall(pattern, text)
             if not matches:
-                return 'n/d'
+                return 'null'
             result = matches[0]
             return result
         except IndexError as e:
@@ -103,6 +104,12 @@ class PDFHandler:
         elif '78 ust. 2 pkt 1' in self.results['basis']:
             czynnosc = 'ZBYCIE'
         self.results['czynność'] = czynnosc
+
+    def kt_formatter(self) -> None:
+        kt = self.results['kt']
+        if kt != 'null' and len(kt) < 5:
+            kt = kt.zfill(5)
+        self.results['kt'] = kt
 
     def create_docx(self) -> None:
         data = self.results
@@ -145,15 +152,20 @@ class PDFHandler:
         if self.results['czynność'] == 'NABYCIE':
             kara = source['kara_nabycie']
             uzasadnienie = source['uzasadnienie_nabycie']
+            uzasadnienie += source['uzasadnienie_wspolne']
         elif self.results['czynność'] == 'SPROWADZONY':
             kara = source['kara_ue']
             uzasadnienie = source['uzasadnienie_ue']
+            uzasadnienie += source['uzasadnienie_wspolne']
         elif self.results['czynność'] == 'ZBYCIE':
-            pass
+            kara = source['kara_zbycie']
+            uzasadnienie = source['uzasadnienie_zbycie']
+            uzasadnienie += source['uzasadnienie_wspolne'][3:]
+            
         
-        uzasadnienie += source['uzasadnienie_wspolne']
-
-        doc.add_paragraph(f'Poznań dnia {date.today()}').paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        today = date.today()
+        formatted_date = today.strftime('%d %m, %Y')
+        doc.add_paragraph(f'Poznań dnia {formatted_date}').paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
         header = 'Starosta Poznański\nul. Jackowskiego 18\n60-509 Poznań'
         doc.add_paragraph(header).paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -208,7 +220,12 @@ class PDFHandler:
             
         paragraph = doc.add_paragraph('\nSprawę prowadzi:   Beata Andrzejewska tel. 61 8410 568')
         
-        doc.save(f"KT.5410.7.{data['kt']}.2024.docx")
+        if data['kt'] == 'null':
+            file_name = f"KT.5410.7.{data['tr']}.2024.docx"
+        else:    
+            file_name = f"KT.5410.7.{data['kt']}.2024.docx"
+        
+        doc.save(file_name)
 
     def __str__(self) -> str:
         return '\n'.join(f'{key} - {value}' for key, value in self.results.items()) + '\n' + '-' * 50
@@ -226,7 +243,7 @@ class ReadPDF:
 
     def read_pdf(self) -> None: 
         handlers = []
-        for file_path in self.files_paths[18:19]:
+        for file_path in self.files_paths[:30]:
             handlers.append(PDFHandler(file_path))
         self.handlers: List[PDFHandler] = handlers
 

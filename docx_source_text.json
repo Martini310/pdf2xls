@@ -5,6 +5,8 @@
     ,
     "kara_ue": "nakłada karę pieniężną w wysokości 500 zł (słownie: pięćset zł) w związku z niedopełnieniem obowiązku złożenia wniosku o rejestrację w terminie 30 dni od dnia sprowadzenia pojazdu na terytorium Rzeczpospolitej Polskiej z terytorium państwa członkowskiego Unii Europejskiej wyżej wymienionego pojazdu, tj. obowiązku wynikającego z art. 73aa ust. 1 pkt 3 ustawy - Prawo o ruchu drogowym.",
     
+    "kara_zbycie": "nakłada karę pieniężną w wysokości 250 zł (słownie: dwieście pięćdziesiąt zł) w związku z niedopełnieniem obowiązku złożenia wniosku w terminie 30 dni od dnia zbycia wyżej wymienionego pojazdu, tj. obowiązku wynikającego z art. 78 ust. 2 pkt 1 ustawy - Prawo o ruchu drogowym.",
+
     "uzasadnienie_nabycie": [
         "\tTutejszy organ powziął informację z urzędu o tym, że strona w postępowaniu nie złożyła w terminie wniosku o rejestrację pojazdu nabytego na terytorium Rzeczpospolitej Polskiej. Z treści umowy/faktury nr ………….. pomiędzy ………………………. (sprzedającym) a {} (kupującym) wynika, że strona nabyła pojazd w dniu {}r.",
         "\tZgodnie z art. 73aa ust. 1 pkt 1 ustawy Prawo o ruchu drogowym właściciel pojazdu jest obowiązany złożyć wniosek o jego rejestrację w terminie nieprzekraczającym 30 dni od dnia jego nabycia na terytorium Rzeczpospolitej Polskiej."
@@ -12,6 +14,13 @@
     "uzasadnienie_ue": [
         "\nTutejszy organ powziął informację z urzędu o tym, że strona w postępowaniu nie złożyła w terminie wniosku o rejestrację sprowadzonego pojazdu na terytorium Rzeczpospolitej Polskiej z terytorium państwa członkowskiego Unii Europejskiej. Z treści przedłożonego przez wnioskodawcę oświadczenia wynika, że pojazd został sprowadzony w dniu ……………………r.",
         "\nZgodnie z art. 73aa ust. 1 pkt 3 ustawy Prawo o ruchu drogowym właściciel pojazdu jest obowiązany złożyć wniosek o jego rejestrację w terminie nieprzekraczającym 30 dni od dnia jego sprowadzenia na terytorium Rzeczpospolitej Polskiej."
+    ],
+    "uzasadnienie_zbycie": [
+        "\nTutejszy organ powziął informację z urzędu o tym, że strona w postępowaniu nie złożyła w terminie zawiadomienia o zbyciu pojazdu zarejestrowanego na terytorium Rzeczpospolitej Polskiej. Z treści umowy/faktury nr …………. pomiędzy {} (sprzedającym) a ……………… (kupującym) wynika, że strona zbyła pojazd w dniu {}r.",
+        "\nZgodnie z art. 78 ust. 2 pkt 1 ustawy Prawo o ruchu drogowym właściciel pojazdu zarejestrowanego jest obowiązany zawiadomić w terminie nieprzekraczającym 30 dni starostę o zbyciu pojazdu.",
+        "\nW związku z niedopełnieniem wyrażonego w ustawie – Prawo o ruchu drogowym obowiązku, tutejszy organ wszczął z urzędu w dniu {}r. postępowanie administracyjne w przedmiocie wyżej wskazanego naruszenia o czym pisemnie zawiadomił stronę. Skutecznie doręczone zawiadomienie o wszczęciu postepowania umożliwiło stronie czynny udział w toczącym się postępowaniu i wypowiedzenie się w przedmiotowej sprawie. Strona nie złożyła pisemnego wyjaśnienia.",
+        "\nW myśl art. 140mb ust 6 ustawy Prawo o ruchu drogowym, kto będąc właścicielem pojazdu zarejestrowanego na terytorium Rzeczypospolitej Polskiej wbrew przepisowi art. 78 ust. 2 pkt 1 nie zawiadamia starosty o zbyciu pojazdu w terminie, podlega karze pieniężnej w wysokości 250 zł.",
+        "\nMając na uwadze powyższe organ ustalił, że zasadne jest zastosowanie kary w wysokości 250 zł (słownie: dwieście pięćdziesiąt zł)."
     ],
     "uzasadnienie_wspolne": [
         "\tW związku z niedopełnieniem wyrażonego w ustawie – Prawo o ruchu drogowym obowiązku, tutejszy organ wszczął z urzędu w dniu {}r. postępowanie administracyjne w przedmiocie wyżej wskazanego naruszenia o czym pisemnie zawiadomił stronę. Skutecznie doręczone zawiadomienie o wszczęciu postepowania umożliwiło stronie czynny udział w toczącym się postępowaniu i wypowiedzenie się w przedmiotowej sprawie. Strona nie złożyła pisemnego wyjaśnienia.",
