@@ -243,7 +243,7 @@ class ReadPDF:
 
     def read_pdf(self) -> None: 
         handlers = []
-        for file_path in self.files_paths[:30]:
+        for file_path in self.files_paths:
             handlers.append(PDFHandler(file_path))
         self.handlers: List[PDFHandler] = handlers
 
@@ -290,9 +290,16 @@ if __name__ == '__main__':
     # # print(test.text)
     # test.create_docx()
 
-    a = ReadPDF('./skany')
+    a = ReadPDF('./skany/test')
     a.read_pdf()
-    a.write_to_excel(a.handlers, 'output_ocr.xlsx')
+    a.write_to_excel(a.handlers, 'test.xlsx')
     for pdf in a.handlers:
         pdf.create_docx()
 
+# TODO date format
+# TODO myślnik w dacie
+# TODO kropki na końcu znalezionych wzorców
+# TODO \n zamienić na \t
+# TODO data z / jako separatorem
+# TODO nazwy firm
+# TODO kt z dużą spacją na początku
