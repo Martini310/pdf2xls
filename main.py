@@ -1,5 +1,7 @@
 import os
 import re
+import json
+from datetime import date
 from typing import List, Dict, Pattern
 from PIL import Image
 import pdf2image
@@ -10,8 +12,6 @@ from docx.shared import Pt, Cm, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.enum.style import WD_STYLE_TYPE
 import pytesseract
-from datetime import date
-import json
 
 dotenv.load_dotenv()
 
@@ -20,14 +20,18 @@ pytesseract.pytesseract.tesseract_cmd = os.environ.get('TESSERACT_CMD')
 CUSTOM_CONFIG = r'--oem 3 --psm 6 -l pol'
 poppler_path=os.environ.get('POPPLER_PATH')
 
-pdf_files = [os.path.join("./skany", f) for f in os.listdir('./skany') if os.path.isfile(os.path.join("./skany", f)) and f.endswith('.pdf')]
+pdf_files = [os.path.join("./skany", f) 
+            for f in os.listdir('./skany') 
+            if os.path.isfile(os.path.join("./skany", f)) and f.endswith('.pdf')
+            ]
 # images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in list(reversed(pdf_files))]
 
 
 class PDFHandler:
+    name_ptrn = r'A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż”\"\'©—-'
     patterns: Dict[str, Pattern[str]] = {
-        'kt': r'(?<=KT.5410.[0-9].)([0-9]+)',
-        'name': r'(?<=na rzecz )([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+(?:\s+[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+)*(?:\s+[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+))', # r'(?<=na rzecz )(([A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż]+\s*)+)',
+        'kt': r'(?<=KT.5410.[0-9].)\s*([0-9]+)',
+        'name': rf'(?<=na rzecz )([{name_ptrn}]+(?:\s+[{name_ptrn}]+)*(?:\s+[{name_ptrn}]+))',
         'vin': r'(?<=VIN:)[\s —-]*([A-Z0-9—-]*)',
         'basis': r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)',
         'tr': r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b',
@@ -35,7 +39,7 @@ class PDFHandler:
         'date': r'(?<=Poznań, dnia ).+(?=r)',
         'brand': r'(?<=marki\s)[\w\s\\/-]+(?=o)',
         'pesel': r'[0-9]{9,11}',
-        'purchase_date': r'(?<=z dnia )[0-9-.]+(?=r.)',
+        'purchase_date': r'(?<=z dnia)\s*[0-9-—/.]+(?=r.)',
     }
 
     def __init__(self, path: str) -> None:
@@ -44,6 +48,9 @@ class PDFHandler:
         self.results = self.extract_text(self.text, self.patterns)
         self.przypisz_czynnosc()
         self.kt_formatter()
+        self.date_formatter(self.results.get('date'), 'date')
+        self.date_formatter(self.results.get('purchase_date'), 'purchase_date')
+        self.vin_formatter()
 
     def create_images(self, file: str) -> List[Image.Image]:
         """
@@ -73,6 +80,7 @@ class PDFHandler:
             if not matches:
                 return 'null'
             result = matches[0]
+            result = result.strip().strip('.')
             return result
         except IndexError as e:
             print(text)
@@ -94,8 +102,11 @@ class PDFHandler:
             extracted_text = extracted_text.strip().replace('\n', ' ')
             data[key] = extracted_text
         return data
-    
+
     def przypisz_czynnosc(self) -> None:
+        '''
+        Przypisuje czynność na podstawie podstawy prawnej przywołanej w postanowieniu.
+        '''
         czynnosc = 'n/d'
         if '73aa ust. 1 pkt 3' in self.results['basis']:
             czynnosc = 'SPROWADZONY'
@@ -106,12 +117,37 @@ class PDFHandler:
         self.results['czynność'] = czynnosc
 
     def kt_formatter(self) -> None:
+        '''
+        Fill kt number with zeros on the left if it's shorter than 5 and override it
+        '''
         kt = self.results['kt']
         if kt != 'null' and len(kt) < 5:
             kt = kt.zfill(5)
         self.results['kt'] = kt
 
+    def date_formatter(self, date_str: str, key: str) -> None:
+        '''
+        Replace wrong characters in date and override it in self.results
+        '''
+        if date_str == 'null' or date_str is None:
+            return
+        date_str = date_str.replace('—', '.').replace('-', '.').replace('/', '.')
+        self.results[key] = date_str
+
+    def vin_formatter(self) -> None:
+        '''
+        Replace common mistakes in vin pattern
+        '''
+        vin = self.results['vin']
+        if vin == 'null':
+            return
+        vin = vin.replace('O', '0')
+        self.results['vin'] = vin
+
     def create_docx(self) -> None:
+        '''
+        Create an administrative decision imposing a penalty in .docx format
+        '''
         data = self.results
 
         with open('docx_source_text.json', 'r', encoding='utf-8') as file:
@@ -161,18 +197,18 @@ class PDFHandler:
             kara = source['kara_zbycie']
             uzasadnienie = source['uzasadnienie_zbycie']
             uzasadnienie += source['uzasadnienie_wspolne'][3:]
-            
-        
+            source['podstawa_prawna'] = source['podstawa_prawna'].replace('art. 140mb ust. 1', 'art. 140mb ust. 6')
+
         today = date.today()
-        formatted_date = today.strftime('%d %m, %Y')
-        doc.add_paragraph(f'Poznań dnia {formatted_date}').paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        formatted_date = today.strftime('%d.%m.%Y')
+        doc.add_paragraph(f'Poznań dnia {formatted_date}r.').paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
         header = 'Starosta Poznański\nul. Jackowskiego 18\n60-509 Poznań'
         doc.add_paragraph(header).paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
         paragraph = doc.add_paragraph(f"\n\nDECYZJA NR KT.5410.7.{data['kt']}.2024\n", style=title)
 
-        doc.add_paragraph(source['podstawa_prawna'].format(data['name'], data['pesel'], data['brand'], data['tr'], data['vin']))
+        doc.add_paragraph(source['podstawa_prawna'].format(data['basis'], data['name'], data['pesel'], data['brand'], data['tr'], data['vin']))
 
         paragraph = doc.add_paragraph('\nStarosta\n', style=title)
         paragraph = doc.add_paragraph(kara)
@@ -208,44 +244,48 @@ class PDFHandler:
         paragraph.add_run(' w tytule podając nr decyzji ')
         paragraph.add_run(f"KT.5410.7.{data['kt']}.2024").bold = True
         paragraph = doc.add_paragraph()
-        
+
         paragraph = doc.add_paragraph(source['pouczenia'][2])
         paragraph = doc.add_paragraph()
         paragraph = doc.add_paragraph(source['pouczenia'][3])
         paragraph = doc.add_paragraph('\n' * 9)
-        
+
         paragraph = doc.add_paragraph('Otrzymują:')
 
         add_numbered_paragraphs(doc, [data['address'], 'WYDZIAŁ FINANSÓW W MIEJSCU', 'a/a'], 'List Number 3', Inches(0.5))
-            
+
         paragraph = doc.add_paragraph('\nSprawę prowadzi:   Beata Andrzejewska tel. 61 8410 568')
-        
+
         if data['kt'] == 'null':
             file_name = f"KT.5410.7.{data['tr']}.2024.docx"
-        else:    
+        else:
             file_name = f"KT.5410.7.{data['kt']}.2024.docx"
-        
+
         doc.save(file_name)
 
     def __str__(self) -> str:
-        return '\n'.join(f'{key} - {value}' for key, value in self.results.items()) + '\n' + '-' * 50
+        return '\n'.join(f'{key} - {value}' for key,value in self.results.items()) + '\n' + '-' * 50
 
 
 class ReadPDF:
     def __init__(self, path: str, reverse: bool = False) -> None:
         self.path: str = path
         self.reverse: bool = reverse
+        self.handlers: List[PDFHandler] = None
         self.files_paths: List[str] = [
             os.path.join(self.path, f)
             for f in os.listdir(self.path)
             if os.path.isfile(os.path.join(self.path, f)) and f.endswith('.pdf')
         ]
 
-    def read_pdf(self) -> None: 
+    def read_pdf(self) -> None:
+        '''
+        Create a list of PDFHandler objects and store it in self.handlers
+        '''
         handlers = []
         for file_path in self.files_paths:
             handlers.append(PDFHandler(file_path))
-        self.handlers: List[PDFHandler] = handlers
+        self.handlers = handlers
 
     def write_to_excel(self, data: List[PDFHandler], excel_file_path: str) -> None:
         """
@@ -285,9 +325,9 @@ def add_numbered_paragraphs(doc, items, style_name, left_indent=None, space_afte
 
 
 if __name__ == '__main__':
-    # test = PDFHandler('./d.pdf')
+    # test = PDFHandler('./skany/test/2024-05-08-14-38-17-459_00009.pdf')
     # print(test)
-    # # print(test.text)
+    # print(test.text)
     # test.create_docx()
 
     a = ReadPDF('./skany/test')
@@ -295,11 +335,3 @@ if __name__ == '__main__':
     a.write_to_excel(a.handlers, 'test.xlsx')
     for pdf in a.handlers:
         pdf.create_docx()
-
-# TODO date format
-# TODO myślnik w dacie
-# TODO kropki na końcu znalezionych wzorców
-# TODO \n zamienić na \t
-# TODO data z / jako separatorem
-# TODO nazwy firm
-# TODO kt z dużą spacją na początku
