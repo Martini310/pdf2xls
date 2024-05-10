@@ -24,11 +24,10 @@ pdf_files = [os.path.join("./skany", f)
             for f in os.listdir('./skany') 
             if os.path.isfile(os.path.join("./skany", f)) and f.endswith('.pdf')
             ]
-# images = [pdf2image.convert_from_path(f, poppler_path=poppler_path) for f in list(reversed(pdf_files))]
 
 
 class PDFHandler:
-    name_ptrn = r'A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż”\"\'©—-&'
+    name_ptrn = r'A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż”\"\'©—&-'
     patterns: Dict[str, Pattern[str]] = {
         'kt': r'(?<=KT.5410.[0-9].)\s*([0-9]+)',
         'name': rf'(?<=na rzecz )([{name_ptrn}]+(?:\s+[{name_ptrn}]+)*(?:\s+[{name_ptrn}]+))',
@@ -37,9 +36,9 @@ class PDFHandler:
         'tr': r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b',
         'address': r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)',
         'date': r'(?<=Poznań, dnia ).+(?=r)',
-        'brand': r'(?<=marki\s)[\w\s\\/-]+(?=o)',
+        'brand': r'(?<=marki\s)[\w\s\\/-—]+(?=o)',
         'pesel': r'[0-9]{9,11}',
-        'purchase_date': r'(?<=z dnia)\s*[0-9-—/.]+(?=r.)',
+        'purchase_date': r'(?<=z[\s]dnia)\s*[0-9-—/.\s]+(?=r.)',
     }
 
     def __init__(self, path: str) -> None:
@@ -80,7 +79,7 @@ class PDFHandler:
             if not matches:
                 return 'null'
             result = matches[0]
-            result = result.strip().strip('.')
+            result = result.strip().strip('.').strip(',')
             return result
         except IndexError as e:
             print(text)
@@ -325,13 +324,13 @@ def add_numbered_paragraphs(doc, items, style_name, left_indent=None, space_afte
 
 
 if __name__ == '__main__':
-    # test = PDFHandler('./skany/test/2024-05-08-14-38-17-459_00009.pdf')
-    # print(test)
-    # print(test.text)
-    # test.create_docx()
+    test = PDFHandler('./skany/test/2024-05-08-14-38-17-459_00008.pdf')
+    print(test)
+    print(test.text)
+    test.create_docx()
 
-    a = ReadPDF('./skany/test2')
-    a.read_pdf()
-    a.write_to_excel(a.handlers, 'test2.xlsx')
-    for pdf in a.handlers:
-        pdf.create_docx()
+    # a = ReadPDF('./skany/test')
+    # a.read_pdf()
+    # a.write_to_excel(a.handlers, 'test2.xlsx')
+    # for pdf in a.handlers:
+    #     pdf.create_docx()
