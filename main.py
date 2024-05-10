@@ -28,7 +28,7 @@ pdf_files = [os.path.join("./skany", f)
 
 
 class PDFHandler:
-    name_ptrn = r'A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż”\"\'©—-'
+    name_ptrn = r'A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż”\"\'©—-&'
     patterns: Dict[str, Pattern[str]] = {
         'kt': r'(?<=KT.5410.[0-9].)\s*([0-9]+)',
         'name': rf'(?<=na rzecz )([{name_ptrn}]+(?:\s+[{name_ptrn}]+)*(?:\s+[{name_ptrn}]+))',
@@ -330,8 +330,8 @@ if __name__ == '__main__':
     # print(test.text)
     # test.create_docx()
 
-    a = ReadPDF('./skany/test')
+    a = ReadPDF('./skany/test2')
     a.read_pdf()
-    a.write_to_excel(a.handlers, 'test.xlsx')
+    a.write_to_excel(a.handlers, 'test2.xlsx')
     for pdf in a.handlers:
         pdf.create_docx()
