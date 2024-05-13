@@ -12,6 +12,7 @@ from docx.shared import Pt, Cm, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.enum.style import WD_STYLE_TYPE
 import pytesseract
+import PyPDF2
 
 dotenv.load_dotenv()
 
@@ -41,9 +42,14 @@ class PDFHandler:
         'purchase_date': r'(?<=z[\s]dnia)\s*[0-9-—/.\s]+(?=r.)',
     }
 
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, scan: bool = False) -> None:
         self.path: str = path
-        self.text = self.perform_ocr(self.create_images(self.path))
+        self.scan: bool = scan
+        if self.scan:
+            self.text = self.perform_ocr(self.create_images(self.path))
+        else:
+            self.text = self.extract_text_from_pdf(self.path)
+            
         self.results = self.extract_text(self.text, self.patterns)
         self.przypisz_czynnosc()
         self.kt_formatter()
@@ -51,9 +57,21 @@ class PDFHandler:
         self.date_formatter(self.results.get('purchase_date'), 'purchase_date')
         self.vin_formatter()
 
+    def extract_text_from_pdf(self, file: str) -> str:
+        """
+        Extract text from PDF file.
+        """
+        pdf_text = ""
+        with open(file, "rb") as f:
+            pdf_reader = PyPDF2.PdfReader(f)
+            for n, _ in enumerate(pdf_reader.pages):
+                page = pdf_reader.pages[n]
+                pdf_text += page.extract_text()
+        return pdf_text
+
     def create_images(self, file: str) -> List[Image.Image]:
         """
-        Convert PDF file into image.
+        Convert PDF (scanned) file into image.
         """
         image: List[Image.Image] = pdf2image.convert_from_path(file, poppler_path=poppler_path)
 
@@ -267,9 +285,10 @@ class PDFHandler:
 
 
 class ReadPDF:
-    def __init__(self, path: str, reverse: bool = False) -> None:
+    def __init__(self, path: str, scan: bool = False, reverse: bool = False) -> None:
         self.path: str = path
         self.reverse: bool = reverse
+        self.scan: bool = scan
         self.handlers: List[PDFHandler] = None
         self.files_paths: List[str] = [
             os.path.join(self.path, f)
@@ -283,7 +302,7 @@ class ReadPDF:
         '''
         handlers = []
         for file_path in self.files_paths:
-            handlers.append(PDFHandler(file_path))
+            handlers.append(PDFHandler(file_path, scan=self.scan))
         self.handlers = handlers
 
     def write_to_excel(self, data: List[PDFHandler], excel_file_path: str) -> None:
@@ -324,13 +343,13 @@ def add_numbered_paragraphs(doc, items, style_name, left_indent=None, space_afte
 
 
 if __name__ == '__main__':
-    test = PDFHandler('./skany/test/2024-05-08-14-38-17-459_00008.pdf')
-    print(test)
-    print(test.text)
-    test.create_docx()
+    # test = PDFHandler('./skany/test/2024-05-08-14-38-17-459_00008.pdf')
+    # print(test)
+    # print(test.text)
+    # test.create_docx()
 
-    # a = ReadPDF('./skany/test')
-    # a.read_pdf()
-    # a.write_to_excel(a.handlers, 'test2.xlsx')
-    # for pdf in a.handlers:
-    #     pdf.create_docx()
+    a = ReadPDF('./skany/test2')
+    a.read_pdf()
+    a.write_to_excel(a.handlers, 'test.xlsx')
+    for pdf in a.handlers:
+        pdf.create_docx()
