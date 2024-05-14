@@ -21,13 +21,16 @@ pytesseract.pytesseract.tesseract_cmd = os.environ.get('TESSERACT_CMD')
 CUSTOM_CONFIG = r'--oem 3 --psm 6 -l pol'
 poppler_path=os.environ.get('POPPLER_PATH')
 
-pdf_files = [os.path.join("./skany", f) 
-            for f in os.listdir('./skany') 
-            if os.path.isfile(os.path.join("./skany", f)) and f.endswith('.pdf')
-            ]
-
 
 class PDFHandler:
+    """
+    A class to read text from a PDF file, extract certain data patterns, and create a docx file.
+    
+    Args:
+        path (str): The path to the PDF file.
+        scan (bool, optional): Whether to perform OCR on scanned PDFs. 
+                            Read text from PDF if false. Defaults to False.
+    """
     name_ptrn = r'A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż”\"\'©—&-'
     patterns: Dict[str, Pattern[str]] = {
         'kt': r'(?<=KT.5410.[0-9].)\s*([0-9]+)',
@@ -49,7 +52,7 @@ class PDFHandler:
             self.text = self.perform_ocr(self.create_images(self.path))
         else:
             self.text = self.extract_text_from_pdf(self.path)
-            
+
         self.results = self.extract_text(self.text, self.patterns)
         self.przypisz_czynnosc()
         self.kt_formatter()
@@ -59,7 +62,13 @@ class PDFHandler:
 
     def extract_text_from_pdf(self, file: str) -> str:
         """
-        Extract text from PDF file.
+        Extract text from PDF file (PDF with text, not a scanned file)
+
+        Args:
+            file (str): The path to the PDF file.
+
+        Returns:
+            str: Extracted text from the PDF.
         """
         pdf_text = ""
         with open(file, "rb") as f:
@@ -71,7 +80,13 @@ class PDFHandler:
 
     def create_images(self, file: str) -> List[Image.Image]:
         """
-        Convert PDF (scanned) file into image.
+        Convert PDF (scanned file) file into image.
+
+        Args:
+            file (str): The path to the PDF file.
+
+        Returns:
+            List[Image.Image]: List of PIL Image objects.
         """
         image: List[Image.Image] = pdf2image.convert_from_path(file, poppler_path=poppler_path)
 
@@ -80,6 +95,12 @@ class PDFHandler:
     def perform_ocr(self, image: List[Image.Image]) -> str:
         """
         Perform OCR (Optical Character Recognition) on an image.
+
+        Args:
+            image (List[Image.Image]): List of PIL Image objects.
+
+        Returns:
+            str: Extracted text from the images.
         """
         extracted_text = []
         for page in image:
@@ -90,33 +111,39 @@ class PDFHandler:
 
     def find_pattern(self, text: str, pattern: Pattern[str]) -> str:
         """
-        Find and return provided pattern in a given text
+        Find and return provided pattern in a given text.
+
+        Args:
+            text (str): The text to search the pattern in.
+            pattern (Pattern[str]): Regular expression pattern.
+
+        Returns:
+            str: The found pattern.
         """
         try:
             matches: List[str] = re.findall(pattern, text)
             if not matches:
                 return 'null'
             result = matches[0]
-            result = result.strip().strip('.').strip(',')
+            result = result.strip().strip('.').strip(',').replace('\n', ' ')
             return result
-        except IndexError as e:
-            print(text)
-            print('error', e)
-            print('---' * 50)
-            return 'błąd'
-        except TypeError as e:
-            print('type error', e)
-            print(text)
+        except (IndexError, TypeError):
             return 'błąd'
 
     def extract_text(self, text: str, patterns: Dict[str, Pattern[str]]) -> Dict[str, str]:
         """
-        Return a dict with extracted data from given text based on patterns provided in dict
+        Return a dict with extracted data from given text based on patterns provided in dict.
+
+        Args:
+            text (str): The text to extract data from.
+            patterns (Dict[str, Pattern[str]]): Dictionary of data patterns.
+
+        Returns:
+            Dict[str, str]: Extracted data.
         """
         data: Dict[str, str] = {}
         for key, pattern in patterns.items():
             extracted_text = self.find_pattern(text, pattern)
-            extracted_text = extracted_text.strip().replace('\n', ' ')
             data[key] = extracted_text
         return data
 
@@ -142,18 +169,22 @@ class PDFHandler:
             kt = kt.zfill(5)
         self.results['kt'] = kt
 
-    def date_formatter(self, date_str: str, key: str) -> None:
+    def date_formatter(self, dt: str, name: str) -> None:
         '''
         Replace wrong characters in date and override it in self.results
+        
+        Args:
+            dt (str): Date as a string
+            name (str): Name of the date in self.results dict.
         '''
-        if date_str == 'null' or date_str is None:
+        if dt == 'null' or dt is None:
             return
-        date_str = date_str.replace('—', '.').replace('-', '.').replace('/', '.')
-        self.results[key] = date_str
+        dt = dt.replace('—', '.').replace('-', '.').replace('/', '.')
+        self.results[name] = dt
 
     def vin_formatter(self) -> None:
         '''
-        Replace common mistakes in vin pattern
+        Replace common mistakes in VIN pattern
         '''
         vin = self.results['vin']
         if vin == 'null':
@@ -214,22 +245,25 @@ class PDFHandler:
             kara = source['kara_zbycie']
             uzasadnienie = source['uzasadnienie_zbycie']
             uzasadnienie += source['uzasadnienie_wspolne'][3:]
-            source['podstawa_prawna'] = source['podstawa_prawna'].replace('art. 140mb ust. 1', 'art. 140mb ust. 6')
+            source['podstawa_prawna'] = source['podstawa_prawna'].replace('140mb ust. 1', '140mb ust. 6')
 
         today = date.today()
-        formatted_date = today.strftime('%d.%m.%Y')
-        doc.add_paragraph(f'Poznań dnia {formatted_date}r.').paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        formatted_date = f"Poznań dnia {today.strftime('%d.%m.%Y')}r."
+
+        doc.add_paragraph(formatted_date).paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
         header = 'Starosta Poznański\nul. Jackowskiego 18\n60-509 Poznań'
         doc.add_paragraph(header).paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
-        paragraph = doc.add_paragraph(f"\n\nDECYZJA NR KT.5410.7.{data['kt']}.2024\n", style=title)
+        doc.add_paragraph(f"\n\nDECYZJA NR KT.5410.7.{data['kt']}.2024\n", style=title)
 
-        doc.add_paragraph(source['podstawa_prawna'].format(data['basis'], data['name'], data['pesel'], data['brand'], data['tr'], data['vin']))
+        doc.add_paragraph(source['podstawa_prawna'].format(
+            data['basis'], data['name'], data['pesel'], data['brand'], data['tr'], data['vin']
+            ))
 
-        paragraph = doc.add_paragraph('\nStarosta\n', style=title)
-        paragraph = doc.add_paragraph(kara)
-        paragraph = doc.add_paragraph('\nUzasadnienie\n', style=title)
+        doc.add_paragraph('\nStarosta\n', style=title)
+        doc.add_paragraph(kara)
+        doc.add_paragraph('\nUzasadnienie\n', style=title)
 
         doc.add_paragraph(uzasadnienie[0].format(data['name'], data['purchase_date']))
         doc.add_paragraph(uzasadnienie[1])
@@ -252,8 +286,8 @@ class PDFHandler:
         for przepis in source['przepisy'][15:]:
             paragraph = doc.add_paragraph(przepis)
 
-        paragraph = doc.add_paragraph('\nPouczenie\n', style=title)
-        paragraph = doc.add_paragraph(source['pouczenia'][0])
+        doc.add_paragraph('\nPouczenie\n', style=title)
+        doc.add_paragraph(source['pouczenia'][0])
         paragraph = doc.add_paragraph('\n')
 
         paragraph.add_run('\tWpłaty należy dokonać na konto numer: ')
@@ -262,16 +296,17 @@ class PDFHandler:
         paragraph.add_run(f"KT.5410.7.{data['kt']}.2024").bold = True
         paragraph = doc.add_paragraph()
 
-        paragraph = doc.add_paragraph(source['pouczenia'][2])
-        paragraph = doc.add_paragraph()
-        paragraph = doc.add_paragraph(source['pouczenia'][3])
-        paragraph = doc.add_paragraph('\n' * 9)
+        doc.add_paragraph(source['pouczenia'][2])
+        doc.add_paragraph()
+        doc.add_paragraph(source['pouczenia'][3])
+        doc.add_paragraph('\n' * 9)
 
-        paragraph = doc.add_paragraph('Otrzymują:')
+        doc.add_paragraph('Otrzymują:')
 
-        add_numbered_paragraphs(doc, [data['address'], 'WYDZIAŁ FINANSÓW W MIEJSCU', 'a/a'], 'List Number 3', Inches(0.5))
+        receivers = [data['address'], 'WYDZIAŁ FINANSÓW W MIEJSCU', 'a/a']
+        add_numbered_paragraphs(doc, receivers, 'List Number 3', Inches(0.5))
 
-        paragraph = doc.add_paragraph('\nSprawę prowadzi:   Beata Andrzejewska tel. 61 8410 568')
+        doc.add_paragraph('\nSprawę prowadzi:   Beata Andrzejewska tel. 61 8410 568')
 
         if data['kt'] == 'null':
             file_name = f"KT.5410.7.{data['tr']}.2024.docx"
@@ -285,6 +320,14 @@ class PDFHandler:
 
 
 class ReadPDF:
+    """
+    A class to read multiple PDF files, extract data using PDFHandler, and write to Excel.
+
+    Args:
+        path (str): The path to the directory containing PDF files.
+        scan (bool, optional): Whether to perform OCR on scanned PDFs. Defaults to False.
+        reverse (bool, optional): Whether to reverse the order of extracted data. Defaults to False.
+    """
     def __init__(self, path: str, scan: bool = False, reverse: bool = False) -> None:
         self.path: str = path
         self.reverse: bool = reverse
@@ -308,6 +351,10 @@ class ReadPDF:
     def write_to_excel(self, data: List[PDFHandler], excel_file_path: str) -> None:
         """
         Write data extracted from OCR to an Excel file.
+
+        Args:
+            data (List[PDFHandler]): List of PDFHandler objects containing extracted data.
+            excel_file_path (str): The path to save the Excel file.
         """
         workbook = Workbook()
         sheet = workbook.active
