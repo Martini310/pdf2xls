@@ -151,7 +151,7 @@ class PDFHandler:
         '''
         Przypisuje czynność na podstawie podstawy prawnej przywołanej w postanowieniu.
         '''
-        czynnosc = 'n/d'
+        czynnosc = 'null'
         if '73aa ust. 1 pkt 3' in self.results['basis']:
             czynnosc = 'SPROWADZONY'
         elif '73aa ust. 1 pkt 1' in self.results['basis']:
@@ -192,10 +192,25 @@ class PDFHandler:
         vin = vin.replace('O', '0')
         self.results['vin'] = vin
 
+    def is_valid(self):
+        """
+        Check if all values in self.results are 'null'. If yes it's probably not a valid pdf
+        """
+        if all(value == 'null' for value in self.results.values()):
+            raise ValueError(
+                f"Prawdopodobnie plik '{self.path}' nie jest postanowieniem o wszczęciu postępowania.")
+        return True
+
     def create_docx(self) -> None:
         '''
         Create an administrative decision imposing a penalty in .docx format
         '''
+        try:
+            self.is_valid()
+        except ValueError as e:
+            print(e)
+            return
+
         data = self.results
 
         with open('docx_source_text.json', 'r', encoding='utf-8') as file:
@@ -390,13 +405,13 @@ def add_numbered_paragraphs(doc, items, style_name, left_indent=None, space_afte
 
 
 if __name__ == '__main__':
-    # test = PDFHandler('./skany/test/2024-05-08-14-38-17-459_00008.pdf')
-    # print(test)
+    test = PDFHandler('./c.pdf', True)
+    print(test)
     # print(test.text)
-    # test.create_docx()
+    test.create_docx()
 
-    a = ReadPDF('./skany/test2')
-    a.read_pdf()
-    a.write_to_excel(a.handlers, 'test.xlsx')
-    for pdf in a.handlers:
-        pdf.create_docx()
+    # a = ReadPDF('./skany/test2')
+    # a.read_pdf()
+    # a.write_to_excel(a.handlers, 'test.xlsx')
+    # for pdf in a.handlers:
+    #     pdf.create_docx()
