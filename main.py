@@ -3,6 +3,7 @@ import re
 import json
 from datetime import date
 from typing import List, Dict, Pattern
+import argparse
 from PIL import Image
 import pdf2image
 import dotenv
@@ -13,6 +14,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.enum.style import WD_STYLE_TYPE
 import pytesseract
 import PyPDF2
+
 
 dotenv.load_dotenv()
 
@@ -33,9 +35,9 @@ class PDFHandler:
     """
     name_ptrn = r'A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż”\"\'©—&-'
     patterns: Dict[str, Pattern[str]] = {
-        'kt': r'(?<=KT.5410.[0-9].)\s*([0-9]+)',
+        'kt': r'(?<=5410.[0-9].)\s*([0-9]+)',
         'name': rf'(?<=na rzecz )([{name_ptrn}]+(?:\s+[{name_ptrn}]+)*(?:\s+[{name_ptrn}]+))',
-        'vin': r'(?<=VIN:)[\s —-]*([A-Z0-9—-]*)',
+        'vin': r'(?<=VIN:|V!N:)[\s —-]*([\w?—-]*)',
         'basis': r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)',
         'tr': r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b',
         'address': r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)',
@@ -192,21 +194,13 @@ class PDFHandler:
         vin = vin.replace('O', '0')
         self.results['vin'] = vin
 
-    def is_valid(self):
-        """
-        Check if all values in self.results are 'null'. If yes it's probably not a valid pdf
-        """
-        if all(value == 'null' for value in self.results.values()):
-            raise ValueError(
-                f"Prawdopodobnie plik '{self.path}' nie jest postanowieniem o wszczęciu postępowania.")
-        return True
 
     def create_docx(self) -> None:
         '''
         Create an administrative decision imposing a penalty in .docx format
         '''
         try:
-            self.is_valid()
+            is_valid(self)
         except ValueError as e:
             print(e)
             return
@@ -375,22 +369,42 @@ class ReadPDF:
         sheet = workbook.active
         sheet.title = 'Extracted data (OCR)'
 
-        for idx, handler in enumerate(data, start=1):
-            kt = handler.results
-            sheet[f'A{idx}'] = kt['kt']
-            sheet[f'B{idx}'] = kt['tr']
-            sheet[f'C{idx}'] = kt['vin']
-            sheet[f'D{idx}'] = kt['name']
-            sheet[f'E{idx}'] = ''
-            sheet[f'F{idx}'] = ''
-            sheet[f'G{idx}'] = kt['date']
-            sheet[f'H{idx}'] = ''
-            sheet[f'I{idx}'] = ''
-            sheet[f'J{idx}'] = ''
-            sheet[f'K{idx}'] = kt['czynność']
-            sheet[f'L{idx}'] = kt['basis']
+        row = 1
+        for handler in data:
+            try:
+                # Check if a file is valid pdf
+                is_valid(handler)
+
+                kt = handler.results
+                sheet[f'A{row}'] = kt['kt']
+                sheet[f'B{row}'] = kt['tr']
+                sheet[f'C{row}'] = kt['vin']
+                sheet[f'D{row}'] = kt['name']
+                sheet[f'E{row}'] = ''
+                sheet[f'F{row}'] = ''
+                sheet[f'G{row}'] = kt['date']
+                sheet[f'H{row}'] = ''
+                sheet[f'I{row}'] = ''
+                sheet[f'J{row}'] = ''
+                sheet[f'K{row}'] = kt['czynność']
+                sheet[f'L{row}'] = kt['basis']
+
+                row += 1
+            except ValueError as e:
+                print(e)
+                continue
         workbook.save(excel_file_path)
 
+def is_valid(pdf_obj: PDFHandler) -> None:
+    """
+    Check if all values in PDFHandler.results are 'null'. 
+    If yes it's probably not a valid pdf object
+    """
+    if all(value == 'null' for value in pdf_obj.results.values()):
+        raise ValueError(
+            f"Prawdopodobnie plik '{pdf_obj.path}' nie "
+            f"jest postanowieniem o wszczęciu postępowania.")
+    return True
 
 def add_numbered_paragraphs(doc, items, style_name, left_indent=None, space_after=None):
     """
@@ -405,13 +419,28 @@ def add_numbered_paragraphs(doc, items, style_name, left_indent=None, space_afte
 
 
 if __name__ == '__main__':
-    test = PDFHandler('./c.pdf', True)
-    print(test)
+    # test = PDFHandler('./skany/test2/20240515115607.pdf')
+    # print(test)
     # print(test.text)
-    test.create_docx()
+    # test.create_docx()
 
     # a = ReadPDF('./skany/test2')
     # a.read_pdf()
     # a.write_to_excel(a.handlers, 'test.xlsx')
     # for pdf in a.handlers:
     #     pdf.create_docx()
+
+    parser = argparse.ArgumentParser(
+        description="Script that generate administrarive decisions based on pdf files"
+    )
+    parser.add_argument("--path", required=True, type=str, help="Enter path to folder with pdf files")
+    parser.add_argument("--scan", required=False, type=bool, default=False, help="Is the file a scan (image)")
+    parser.add_argument("--reverse", required=False, type=bool, default=False, help="Write to excel in reverse order")
+
+    args = parser.parse_args()
+
+    a = ReadPDF(path=args.path, scan=args.scan, reverse=args.reverse)
+    a.read_pdf()
+    a.write_to_excel(a.handlers, 'test.xlsx')
+    for pdf in a.handlers:
+        pdf.create_docx()
