@@ -37,10 +37,11 @@ class PDFHandler:
     patterns: Dict[str, Pattern[str]] = {
         'kt': r'(?<=5410.[0-9].)\s*([0-9]+)',
         'name': rf'(?<=na rzecz )([{name_ptrn}]+(?:\s+[{name_ptrn}]+)*(?:\s+[{name_ptrn}]+))',
-        'vin': r'(?<=VIN:|V!N:)[\s —-]*([\w?—-]*)',
+        'vin': r'(?<=V[I!]N[:;])[\s —-]*([\w?—-]*)',
         'basis': r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)',
         'tr': r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b',
-        'address': r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)',
+        # 'address': r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)',
+        'address': r'(?<=na rzecz )[\w\W]*(?=w związku)',
         'date': r'(?<=Poznań, dnia ).+(?=r)',
         'brand': r'(?<=marki\s)[\w\s\\/-—]+(?=o)',
         'pesel': r'[0-9]{9,11}',
@@ -428,7 +429,8 @@ if __name__ == '__main__':
     # a.read_pdf()
     # a.write_to_excel(a.handlers, 'test.xlsx')
     # for pdf in a.handlers:
-    #     pdf.create_docx()
+    #     print(pdf.results['address'])
+        # pdf.create_docx()
 
     parser = argparse.ArgumentParser(
         description="Script that generate administrarive decisions based on pdf files"
