@@ -40,7 +40,6 @@ class PDFHandler:
         'vin': r'(?<=V[I!]N[:;])[\s —-]*([\w?—-]*)',
         'basis': r'(?<=w związku z art\. )[\w\s\.]*(?= ustawy)',
         'tr': r'(?<=rej\.)\s*([A-Z0-9]+\s*[A-Z0-9]+)\b',
-        # 'address': r'(?<=na rzecz )[\s\w,.©\[\]/\\-]*(?=w związku)',
         'address': r'(?<=na rzecz )[\w\W]*(?=w związku)',
         'date': r'(?<=Poznań, dnia ).+(?=r)',
         'brand': r'(?<=marki\s)[\w\s\\/-—]+(?=o)',
@@ -51,197 +50,106 @@ class PDFHandler:
     def __init__(self, path: str, scan: bool = False) -> None:
         self.path: str = path
         self.scan: bool = scan
-        if self.scan:
-            self.text = self.perform_ocr(self.create_images(self.path))
-        else:
-            self.text = self.extract_text_from_pdf(self.path)
+        self.text = self.extract_text() if not self.scan else self.perform_ocr(self.create_images())
+        self.results = self.extract_data()
+        self.process_results()
 
-        self.results = self.extract_text(self.text, self.patterns)
-        self.przypisz_czynnosc()
-        self.kt_formatter()
-        self.date_formatter(self.results.get('date'), 'date')
-        self.date_formatter(self.results.get('purchase_date'), 'purchase_date')
-        self.vin_formatter()
-
-    def extract_text_from_pdf(self, file: str) -> str:
-        """
-        Extract text from PDF file (PDF with text, not a scanned file)
-
-        Args:
-            file (str): The path to the PDF file.
-
-        Returns:
-            str: Extracted text from the PDF.
-        """
-        pdf_text = ""
-        with open(file, "rb") as f:
+    def extract_text(self) -> str:
+        """Extract text from PDF file"""
+        with open(self.path, "rb") as f:
             pdf_reader = PyPDF2.PdfReader(f)
-            for n, _ in enumerate(pdf_reader.pages):
-                page = pdf_reader.pages[n]
-                pdf_text += page.extract_text()
-        return pdf_text
+            return ''.join(page.extract_text() for page in pdf_reader.pages)
 
-    def create_images(self, file: str) -> List[Image.Image]:
-        """
-        Convert PDF (scanned file) file into image.
+    def create_images(self) -> List[Image.Image]:
+        """Convert PDF (scanned file) file into images."""
+        return pdf2image.convert_from_path(self.path, poppler_path=poppler_path)
 
-        Args:
-            file (str): The path to the PDF file.
-
-        Returns:
-            List[Image.Image]: List of PIL Image objects.
-        """
-        image: List[Image.Image] = pdf2image.convert_from_path(file, poppler_path=poppler_path)
-
-        return image
-
-    def perform_ocr(self, image: List[Image.Image]) -> str:
-        """
-        Perform OCR (Optical Character Recognition) on an image.
-
-        Args:
-            image (List[Image.Image]): List of PIL Image objects.
-
-        Returns:
-            str: Extracted text from the images.
-        """
-        extracted_text = []
-        for page in image:
-            text = pytesseract.image_to_string(page, config=CUSTOM_CONFIG)
-            extracted_text.append(text)
-
-        return '\n'.join(extracted_text)
+    def perform_ocr(self, images: List[Image.Image]) -> str:
+        """Perform OCR on images."""
+        return '\n'.join(pytesseract.image_to_string(page, config=CUSTOM_CONFIG) for page in images)
 
     def find_pattern(self, text: str, pattern: Pattern[str]) -> str:
-        """
-        Find and return provided pattern in a given text.
+        """Find and return the provided pattern in the given text."""
+        matches: List[str] = re.findall(pattern, text)
+        return matches[0].strip().strip('.').strip(',').replace('\n', ' ') if matches else 'null'
 
-        Args:
-            text (str): The text to search the pattern in.
-            pattern (Pattern[str]): Regular expression pattern.
+    def extract_data(self) -> Dict[str, str]:
+        """Extract data from the text based on predefined patterns."""
+        return {key: self.find_pattern(self.text, pattern) for key,pattern in self.patterns.items()}
 
-        Returns:
-            str: The found pattern.
-        """
-        try:
-            matches: List[str] = re.findall(pattern, text)
-            if not matches:
-                return 'null'
-            result = matches[0]
-            result = result.strip().strip('.').strip(',').replace('\n', ' ')
-            return result
-        except (IndexError, TypeError):
-            return 'błąd'
+    def process_results(self) -> None:
+        """Process and format extracted results."""
+        self.assign_activity()
+        self.format_kt()
+        self.format_date('date')
+        self.format_date('purchase_date')
+        self.format_vin()
 
-    def extract_text(self, text: str, patterns: Dict[str, Pattern[str]]) -> Dict[str, str]:
-        """
-        Return a dict with extracted data from given text based on patterns provided in dict.
+    def assign_activity(self) -> None:
+        """Assign an activity based on the legal basis."""
+        basis = self.results['basis']
+        if '73aa ust. 1 pkt 3' in basis:
+            self.results['czynność'] = 'SPROWADZONY'
+        elif '73aa ust. 1 pkt 1' in basis:
+            self.results['czynność'] = 'NABYCIE'
+        elif '78 ust. 2 pkt 1' in basis:
+            self.results['czynność'] = 'ZBYCIE'
+        else:
+            self.results['czynność'] = 'null'
 
-        Args:
-            text (str): The text to extract data from.
-            patterns (Dict[str, Pattern[str]]): Dictionary of data patterns.
-
-        Returns:
-            Dict[str, str]: Extracted data.
-        """
-        data: Dict[str, str] = {}
-        for key, pattern in patterns.items():
-            extracted_text = self.find_pattern(text, pattern)
-            data[key] = extracted_text
-        return data
-
-    def przypisz_czynnosc(self) -> None:
-        '''
-        Przypisuje czynność na podstawie podstawy prawnej przywołanej w postanowieniu.
-        '''
-        czynnosc = 'null'
-        if '73aa ust. 1 pkt 3' in self.results['basis']:
-            czynnosc = 'SPROWADZONY'
-        elif '73aa ust. 1 pkt 1' in self.results['basis']:
-            czynnosc = 'NABYCIE'
-        elif '78 ust. 2 pkt 1' in self.results['basis']:
-            czynnosc = 'ZBYCIE'
-        self.results['czynność'] = czynnosc
-
-    def kt_formatter(self) -> None:
-        '''
-        Fill kt number with zeros on the left if it's shorter than 5 and override it
-        '''
+    def format_kt(self) -> None:
+        """Format the KT number to be five digits long."""
         kt = self.results['kt']
-        if kt != 'null' and len(kt) < 5:
-            kt = kt.zfill(5)
-        self.results['kt'] = kt
+        self.results['kt'] = kt.zfill(5) if kt != 'null' and len(kt) < 5 else kt
 
-    def date_formatter(self, dt: str, name: str) -> None:
-        '''
-        Replace wrong characters in date and override it in self.results
-        
-        Args:
-            dt (str): Date as a string
-            name (str): Name of the date in self.results dict.
-        '''
-        if dt == 'null' or dt is None:
-            return
-        dt = dt.replace('—', '.').replace('-', '.').replace('/', '.')
-        self.results[name] = dt
+    def format_date(self, name: str) -> None:
+        """Replace wrong characters in date and update the result."""
+        dt = self.results[name]
+        if dt != 'null':
+            self.results[name] = dt.replace('—', '.').replace('-', '.').replace('/', '.')
 
-    def vin_formatter(self) -> None:
-        '''
-        Replace common mistakes in VIN pattern
-        '''
+    def format_vin(self) -> None:
+        """Correct common mistakes in VIN pattern."""
         vin = self.results['vin']
-        if vin == 'null':
-            return
-        vin = vin.replace('O', '0')
-        self.results['vin'] = vin
+        if vin != 'null':
+            self.results['vin'] = vin.replace('O', '0')
 
-
-    def create_docx(self) -> None:
-        '''
-        Create an administrative decision imposing a penalty in .docx format
-        '''
-        try:
-            is_valid(self)
-        except ValueError as e:
-            print(e)
-            return
-
-        data = self.results
-
-        with open('docx_source_text.json', 'r', encoding='utf-8') as file:
-            source = json.load(file)
-
+    def initialize_doc(self) -> Document:
+        """Initialize the Word document with custom styles and layout."""
         doc = Document()
-
-        # Set custom style for bold centered titles
         styles = doc.styles
-        title = styles.add_style('Tytuł', WD_STYLE_TYPE.PARAGRAPH)
-        title.base_style = styles['Normal']
-        title.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        self.setup_title_style(styles)
+        self.setup_normal_style(styles)
+        self.setup_page_layout(doc.sections[0])
+        return doc
 
-        font = doc.styles['Tytuł'].font
-        font.bold = True
+    def setup_title_style(self, styles) -> None:
+        """Set up the title style."""
+        title_style = styles.add_style('Tytuł', WD_STYLE_TYPE.PARAGRAPH)
+        title_style.base_style = styles['Normal']
+        title_style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title_style.font.bold = True
 
-        # Customize base style
-        doc.styles['Normal'].paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
-        doc.styles['Normal'].paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        doc.styles['Normal'].paragraph_format.space_after = Cm(0)
+    def setup_normal_style(self, styles) -> None:
+        """Set up the normal style."""
+        normal_style = styles['Normal']
+        normal_style.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        normal_style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        normal_style.paragraph_format.space_after = Cm(0)
+        normal_style.font.name = 'Calibri'
+        normal_style.font.size = Pt(10)
 
-        font = doc.styles['Normal'].font
-        font.name = 'Calibri'
-        font.size = Pt(10)
-
-        # Customize page and margins sizes
-        section = doc.sections[0]
-
-        section.page_width = Inches(8.27)   # Equivalent to 210 mm
-        section.page_height = Inches(11.69)  # Equivalent to 297 mm
-
+    def setup_page_layout(self, section) -> None:
+        """Set up the page layout and margins."""
+        section.page_width = Inches(8.27)
+        section.page_height = Inches(11.69)
         section.top_margin = Cm(2.5)
         section.bottom_margin = Cm(2.5)
         section.left_margin = Cm(2.5)
         section.right_margin = Cm(2.5)
 
+    def add_content(self, doc: Document, data: Dict[str, str], source: Dict[str, str]) -> None:
+        """Add content to the Word document based on the extracted data."""
         # Choose right template
         if self.results['czynność'] == 'NABYCIE':
             kara = source['kara_nabycie']
@@ -265,15 +173,15 @@ class PDFHandler:
         header = 'Starosta Poznański\nul. Jackowskiego 18\n60-509 Poznań'
         doc.add_paragraph(header).paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
-        doc.add_paragraph(f"\n\nDECYZJA NR KT.5410.7.{data['kt']}.2024\n", style=title)
+        doc.add_paragraph(f"\n\nDECYZJA NR KT.5410.7.{data['kt']}.2024\n", style='Tytuł')
 
         doc.add_paragraph(source['podstawa_prawna'].format(
             data['basis'], data['name'], data['pesel'], data['brand'], data['tr'], data['vin']
             ))
 
-        doc.add_paragraph('\nStarosta\n', style=title)
+        doc.add_paragraph('\nStarosta\n', style='Tytuł')
         doc.add_paragraph(kara)
-        doc.add_paragraph('\nUzasadnienie\n', style=title)
+        doc.add_paragraph('\nUzasadnienie\n', style='Tytuł')
 
         doc.add_paragraph(uzasadnienie[0].format(data['name'], data['purchase_date']))
         doc.add_paragraph(uzasadnienie[1])
@@ -296,7 +204,7 @@ class PDFHandler:
         for przepis in source['przepisy'][15:]:
             paragraph = doc.add_paragraph(przepis)
 
-        doc.add_paragraph('\nPouczenie\n', style=title)
+        doc.add_paragraph('\nPouczenie\n', style='Tytuł')
         doc.add_paragraph(source['pouczenia'][0])
         paragraph = doc.add_paragraph('\n')
 
@@ -318,12 +226,30 @@ class PDFHandler:
 
         doc.add_paragraph('\nSprawę prowadzi:   Beata Andrzejewska tel. 61 8410 568')
 
-        if data['kt'] == 'null':
-            file_name = f"KT.5410.7.{data['tr']}.2024.docx"
-        else:
-            file_name = f"KT.5410.7.{data['kt']}.2024.docx"
+    def save_doc(self, doc: Document, kt: str) -> None:
+        """Save the Word document with a filename based on the KT number."""
+        doc.save(f"{kt}_postanowienie.docx")
 
-        doc.save(file_name)
+    def create_docx(self) -> None:
+        '''Create an administrative decision imposing a penalty in .docx format'''
+        try:
+            is_valid(self)
+
+            data = self.results
+            with open('docx_source_text.json', 'r', encoding='utf-8') as file:
+                source = json.load(file)
+            doc = self.initialize_doc()
+            self.add_content(doc, data, source)
+
+            if data['kt'] == 'null':
+                file_name = f"KT.5410.7.{data['tr']}.2024.docx"
+            else:
+                file_name = f"KT.5410.7.{data['kt']}.2024.docx"
+
+            doc.save(file_name)
+        except ValueError as e:
+            print(e)
+
 
     def __str__(self) -> str:
         return '\n'.join(f'{key} - {value}' for key,value in self.results.items()) + '\n' + '-' * 50
@@ -342,7 +268,7 @@ class ReadPDF:
         self.path: str = path
         self.reverse: bool = reverse
         self.scan: bool = scan
-        self.handlers: List[PDFHandler] = None
+        self.handlers: List[PDFHandler] = []
         self.files_paths: List[str] = [
             os.path.join(self.path, f)
             for f in os.listdir(self.path)
@@ -350,13 +276,10 @@ class ReadPDF:
         ]
 
     def read_pdf(self) -> None:
-        '''
-        Create a list of PDFHandler objects and store it in self.handlers
-        '''
-        handlers = []
-        for file_path in self.files_paths:
-            handlers.append(PDFHandler(file_path, scan=self.scan))
-        self.handlers = handlers
+        '''Create a list of PDFHandler objects and store it in self.handlers'''
+        self.handlers = [PDFHandler(file_path, scan=self.scan) for file_path in self.files_paths]
+        if self.reverse:
+            self.handlers.reverse()
 
     def write_to_excel(self, data: List[PDFHandler], excel_file_path: str) -> None:
         """
@@ -420,7 +343,7 @@ def add_numbered_paragraphs(doc, items, style_name, left_indent=None, space_afte
 
 
 if __name__ == '__main__':
-    # test = PDFHandler('./skany/test2/20240515115607.pdf')
+    # test = PDFHandler('./skany/skany_OCR/20240515115607.pdf')
     # print(test)
     # print(test.text)
     # test.create_docx()
