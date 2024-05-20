@@ -52,7 +52,18 @@ class PDFHandler:
         self.scan: bool = scan
         self.text = self.extract_text() if not self.scan else self.perform_ocr(self.create_images())
         self.results = self.extract_data()
+        for key, value in self.results.items():
+            if value == 'null':
+                self.perform_ocr_on_single_pattern(key)
         self.process_results()
+
+    def perform_ocr_on_single_pattern(self, name: str) -> None:
+        """Perform OCR and seek for pattern on single field in result."""
+        if self.results[name] == 'null':
+            text = self.perform_ocr(self.create_images())
+            result = self.find_pattern(text, self.patterns[name])
+            if result:
+                self.results[name] = result
 
     def extract_text(self) -> str:
         """Extract text from PDF file"""
@@ -343,8 +354,9 @@ def add_numbered_paragraphs(doc, items, style_name, left_indent=None, space_afte
 
 
 if __name__ == '__main__':
+    test = PDFHandler('./skany/test/2024-05-08-14-38-17-459_00003.pdf')
     # test = PDFHandler('./skany/skany_OCR/20240515115607.pdf')
-    # print(test)
+    print(test)
     # print(test.text)
     # test.create_docx()
 
