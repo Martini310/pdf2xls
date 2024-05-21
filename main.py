@@ -52,9 +52,9 @@ class PDFHandler:
         self.scan: bool = scan
         self.text = self.extract_text() if not self.scan else self.perform_ocr(self.create_images())
         self.results = self.extract_data()
-        for key, value in self.results.items():
-            if value == 'null':
-                self.perform_ocr_on_single_pattern(key)
+        # for key, value in self.results.items():
+        #     if value == 'null':
+        #         self.perform_ocr_on_single_pattern(key)
         self.process_results()
 
     def perform_ocr_on_single_pattern(self, name: str) -> None:
@@ -99,7 +99,7 @@ class PDFHandler:
     def assign_activity(self) -> None:
         """Assign an activity based on the legal basis."""
         basis = self.results['basis']
-        if '73aa ust. 1 pkt 3' in basis:
+        if '73aa ust. 1  pkt 3' in basis:
             self.results['czynność'] = 'SPROWADZONY'
         elif '73aa ust. 1 pkt 1' in basis:
             self.results['czynność'] = 'NABYCIE'
@@ -258,7 +258,7 @@ class PDFHandler:
                 file_name = f"KT.5410.7.{data['kt']}.2024.docx"
 
             doc.save(file_name)
-        except ValueError as e:
+        except (ValueError, UnboundLocalError) as e:
             print(e)
 
 
@@ -354,9 +354,9 @@ def add_numbered_paragraphs(doc, items, style_name, left_indent=None, space_afte
 
 
 if __name__ == '__main__':
-    test = PDFHandler('./skany/test/2024-05-08-14-38-17-459_00003.pdf')
+    # test = PDFHandler('./skany/test/2024-05-08-14-38-17-459_00003.pdf')
     # test = PDFHandler('./skany/skany_OCR/20240515115607.pdf')
-    print(test)
+    # print(test)
     # print(test.text)
     # test.create_docx()
 
